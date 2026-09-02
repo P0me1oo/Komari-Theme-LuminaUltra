@@ -2017,8 +2017,8 @@ export function ThemeManage() {
             />
             <ToggleRow
               field="compactShowBilling"
-              title="显示费用到期"
-              desc="展示续费价格与剩余天数。"
+              title="显示到期时间"
+              desc="控制小卡片中的到期日期和剩余天数；服务器价格由“显示服务器价格”单独控制。"
               checked={draft.compactShowBilling}
               onPatch={patch}
             />

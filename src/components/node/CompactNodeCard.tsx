@@ -445,7 +445,7 @@ function CompactNodeInfoStrip({
   upRate,
   downRate,
   showTrafficTotal,
-  showBilling,
+  showExpireTime,
   showNodePrice,
   showConnections,
   expire,
@@ -457,7 +457,7 @@ function CompactNodeInfoStrip({
   upRate: ByteRateDisplay;
   downRate: ByteRateDisplay;
   showTrafficTotal: boolean;
-  showBilling: boolean;
+  showExpireTime: boolean;
   showNodePrice: boolean;
   showConnections: boolean;
   expire: CompactExpire;
@@ -465,7 +465,11 @@ function CompactNodeInfoStrip({
   renewalPrice: string | null;
 }) {
   const infoTileCount =
-    1 + (showTrafficTotal ? 1 : 0) + (showBilling ? 1 : 0) + (showConnections ? 1 : 0);
+    1 +
+    (showTrafficTotal ? 1 : 0) +
+    (showExpireTime ? 1 : 0) +
+    (showNodePrice ? 1 : 0) +
+    (showConnections ? 1 : 0);
 
   return (
     <div
@@ -517,9 +521,9 @@ function CompactNodeInfoStrip({
           />
         </CompactInfoTile>
       )}
-      {showBilling && (
+      {showExpireTime && (
         <CompactInfoTile
-          label="费用到期"
+          label="到期时间"
           color="var(--status-success)"
         >
           <CompactInfoRow
@@ -527,13 +531,18 @@ function CompactNodeInfoStrip({
             value={formatCompactExpire(expire)}
             color={expireColor}
           />
-          {showNodePrice && (
-            <CompactInfoRow
-              icon={<CircleDollarSign size={12} strokeWidth={2.2} />}
-              value={renewalPrice || "未填"}
-              color={renewalPrice ? "var(--status-success)" : "var(--text-tertiary)"}
-            />
-          )}
+        </CompactInfoTile>
+      )}
+      {showNodePrice && (
+        <CompactInfoTile
+          label="服务器价格"
+          color="var(--status-success)"
+        >
+          <CompactInfoRow
+            icon={<CircleDollarSign size={12} strokeWidth={2.2} />}
+            value={renewalPrice || "未填"}
+            color={renewalPrice ? "var(--status-success)" : "var(--text-tertiary)"}
+          />
         </CompactInfoTile>
       )}
       {showConnections && (
@@ -708,7 +717,8 @@ export const CompactNodeCard = memo(function CompactNodeCard({
     osName,
   } = model;
   const showTrafficTotal = themeSettings.isReady && themeSettings.compactShowTrafficTotal;
-  const showBilling = themeSettings.isReady && themeSettings.compactShowBilling;
+  // 旧设置键 compactShowBilling 继续兼容,其显示语义是小卡片到期时间。
+  const showExpireTime = themeSettings.isReady && themeSettings.compactShowBilling;
   const showUptime = themeSettings.isReady && themeSettings.compactShowUptime;
   const showConnections = themeSettings.isReady && themeSettings.showConnections;
   const showNodePrice = themeSettings.isReady && themeSettings.showNodePrice;
@@ -730,12 +740,12 @@ export const CompactNodeCard = memo(function CompactNodeCard({
         upRate={upRate}
         downRate={downRate}
         showTrafficTotal={showTrafficTotal}
-        showBilling={showBilling}
+        showExpireTime={showExpireTime}
         showNodePrice={showNodePrice}
         showConnections={showConnections}
         expire={expire}
         expireColor={expireColor}
-        renewalPrice={showNodePrice ? renewalPrice : null}
+        renewalPrice={renewalPrice}
       />
       <CompactTrafficBar traffic={traffic} uptimeLabel={uptimeLabel} />
       {homepagePingLines.length === HOMEPAGE_MULTI_PING_TASK_COUNT ? (

@@ -1,4 +1,4 @@
-# Komari-Theme-LuminaPlus
+# Komari-Theme-LuminaUltra
 
 一直以来，比较支持这样一个观点：**如果有比较特殊的需求，并且自己具备相关能力，最好可以进行二次开发** 原因主要有几点：
 1. 需考虑大方向设计维护。毕竟公用产品，但每个兄弟的审美、习惯和需求都有所不同，“众口难调”，自己喜欢的才是最好的。
@@ -6,12 +6,12 @@
 3. 版本存在滞后性。 有问题或者好建议我会记录并后续版本中处理。但现实本职+生活影响，时间并非充裕。
 产品最初的价值和目标，是希望兄弟们用得、看得、体验舒服。所以，无论是建议、功能优化、交互逻辑、设计思路，还是发现 Bug，都非常欢迎积极、开放地提交 Issue。
 
-基于 [komari-theme-Lumina](https://github.com/stqfdyr/komari-theme-Lumina) 的增强分支。感谢原作者 [stqfdyr](https://github.com/stqfdyr) 开源 Lumina 主题。
+基于 [shanyang242/Komari-Theme-LuminaPlus](https://github.com/shanyang242/Komari-Theme-LuminaPlus) 二次开发并更名为 LuminaUltra；其上游基于 [komari-theme-Lumina](https://github.com/stqfdyr/komari-theme-Lumina)。感谢 [shanyang242](https://github.com/shanyang242) 和原作者 [stqfdyr](https://github.com/stqfdyr) 开源相关主题。
 
 ## 效果预览
 
 <p align="center">
-  <img src="docs/images/theme-preview.png" alt="Komari-Theme-LuminaPlus 综合预览" width="90%">
+  <img src="docs/images/theme-preview.png" alt="Komari-Theme-LuminaUltra 综合预览" width="90%">
 </p>
 
 ### 首页总览与节点卡片
@@ -69,7 +69,7 @@
 Komari 常见安装目录下，主题视频所在位置为：
 
 ```text
-/komari/data/theme/LuminaPlus/dist/assets
+/komari/data/theme/LuminaUltra/dist/assets
 ```
 
 自定义视频的文件名不要与内置测试视频相同，否则主题可能仍会加载默认视频。下面以 `my-background.mp4` 为例。
@@ -84,8 +84,8 @@ Komari 常见安装目录下，主题视频所在位置为：
 
    ```bash
    ssh root@VPS_IP
-   cp -f /komari/my-background.mp4 /komari/data/theme/LuminaPlus/dist/assets/my-background.mp4
-   chmod 644 /komari/data/theme/LuminaPlus/dist/assets/my-background.mp4
+   cp -f /komari/my-background.mp4 /komari/data/theme/LuminaUltra/dist/assets/my-background.mp4
+   chmod 644 /komari/data/theme/LuminaUltra/dist/assets/my-background.mp4
    ```
 
 3. 在主题管理中启用自定义背景并选择“视频”，将视频地址改为：
@@ -99,8 +99,8 @@ Komari 常见安装目录下，主题视频所在位置为：
 > 更新或重新安装主题后会恢复为默认视频。请务必在 `/komari` 保留一份自定义视频备份；更新后重新执行下面两条命令将视频拷回，再在主题管理中选择 `/assets/my-background.mp4` 即可恢复：
 
 ```bash
-cp -f /komari/my-background.mp4 /komari/data/theme/LuminaPlus/dist/assets/my-background.mp4
-chmod 644 /komari/data/theme/LuminaPlus/dist/assets/my-background.mp4
+cp -f /komari/my-background.mp4 /komari/data/theme/LuminaUltra/dist/assets/my-background.mp4
+chmod 644 /komari/data/theme/LuminaUltra/dist/assets/my-background.mp4
 ```
 
 #### 自行构建主题
@@ -211,10 +211,10 @@ npm run dev -- --host 0.0.0.0
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=shanyang242%2FKomari-Theme-LuminaPlus&type=timeline&legend=bottom-right">
+<a href="https://www.star-history.com/?repos=P0me1oo%2FKomari-Theme-LuminaUltra&type=timeline&legend=bottom-right">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=shanyang242/Komari-Theme-LuminaPlus&type=timeline&theme=dark&legend=bottom-right" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=shanyang242/Komari-Theme-LuminaPlus&type=timeline&legend=bottom-right" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=shanyang242/Komari-Theme-LuminaPlus&type=timeline&legend=bottom-right" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=P0me1oo/Komari-Theme-LuminaUltra&type=timeline&theme=dark&legend=bottom-right" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=P0me1oo/Komari-Theme-LuminaUltra&type=timeline&legend=bottom-right" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=P0me1oo/Komari-Theme-LuminaUltra&type=timeline&legend=bottom-right" />
  </picture>
 </a>

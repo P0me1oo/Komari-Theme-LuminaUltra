@@ -1,10 +1,10 @@
 {
-  "name": "komari-theme-luminaPlus",
+  "name": "komari-theme-luminaultra",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.4.1",
   "type": "module",
-  "description": "Komari-Theme-LuminaPlus",
-  "author": "codex&shark&shanyang",
+  "description": "Komari-Theme-LuminaUltra",
+  "author": "P0me1oo",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

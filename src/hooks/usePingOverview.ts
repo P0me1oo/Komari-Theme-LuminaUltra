@@ -276,7 +276,7 @@ function resolvePingAssignmentKey(
 
 // 限制 RPC 与兼容接口组成的整条回退链，避免一次刷新长期占住轮询。
 const PING_REQUEST_TIMEOUT_MS = 35_000;
-const PING_CACHE_STORAGE_KEY = "komari:lumina-plus:homepage-ping:v1";
+const PING_CACHE_STORAGE_KEY = "komari:lumina-ultra:homepage-ping:v1";
 const PING_CACHE_TTL_MS = 5 * 60_000;
 
 interface PingOverviewCachePayload {

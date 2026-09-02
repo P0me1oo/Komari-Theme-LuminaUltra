@@ -69,17 +69,21 @@
   /* 在线/离线配色,块状与柱状共用一处确保同步;比纯 status 色稍淡,贴合主题。 */
   --overview-online: color-mix(in srgb, var(--status-success) 72%, transparent);
   --overview-offline: color-mix(in srgb, var(--status-error) 55%, transparent);
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
   gap: 12px;
+  overflow-x: auto;
   margin-bottom: 16px;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
 }
 
 .overview-card {
   --metric-accent: var(--text-tertiary);
   position: relative;
   display: flex;
-  min-width: 0;
+  min-width: 220px;
+  flex: 1 0 0;
   min-height: 112px;
   flex-direction: column;
   gap: 10px;
@@ -755,19 +759,14 @@
   color: var(--text-primary);
 }
 
-@media (max-width: 1100px) {
-  .home-overview {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 680px) {
-  /* 2 列布局已由上面 1100px 断点给出,这里只收紧间距。 */
+  /* 单行布局在窄屏通过横向滚动保持卡片顺序,这里只收紧间距。 */
   .home-overview {
     gap: 10px;
   }
 
   .overview-card {
+    min-width: 200px;
     min-height: 100px;
     border-radius: 14px;
     padding: 12px 13px;
@@ -1063,6 +1062,7 @@
 }
 
 .home-overview.is-dense .overview-card {
+  min-width: 200px;
   min-height: 0;
   gap: 6px;
   border-radius: 12px;

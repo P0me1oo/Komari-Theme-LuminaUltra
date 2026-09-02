@@ -60,6 +60,9 @@ export interface ResolvedThemeSettings {
   homeSortDirection: HomeSortDirection;
   showCostSummary: boolean;
   showCostSummaryFloatingButton: boolean;
+  showOverviewAsset: boolean;
+  showOverviewMemory: boolean;
+  showOverviewDisk: boolean;
   showOverviewRatings: boolean;
   showTrafficRating: boolean;
   showBandwidthRating: boolean;
@@ -70,6 +73,7 @@ export interface ResolvedThemeSettings {
   compactShowTrafficTotal: boolean;
   compactShowBilling: boolean;
   compactShowUptime: boolean;
+  showNodePrice: boolean;
   showConnections: boolean;
   showTodayTrafficPopover: boolean;
   hiddenNodes: string[];
@@ -110,6 +114,9 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   homeSortDirection: HOME_SORT_NATURAL_DIRECTION.default,
   showCostSummary: true,
   showCostSummaryFloatingButton: true,
+  showOverviewAsset: true,
+  showOverviewMemory: false,
+  showOverviewDisk: false,
   showOverviewRatings: true,
   showTrafficRating: true,
   showBandwidthRating: true,
@@ -120,6 +127,7 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   compactShowTrafficTotal: true,
   compactShowBilling: true,
   compactShowUptime: true,
+  showNodePrice: true,
   showConnections: false,
   showTodayTrafficPopover: true,
   hiddenNodes: [],
@@ -263,6 +271,9 @@ export function normalizeThemeSettings(
     ...normalizeHomeSortDefault(settings?.homeSortField, settings?.homeSortDirection),
     showCostSummary: enabledUnlessFalse(settings?.showCostSummary),
     showCostSummaryFloatingButton: enabledUnlessFalse(settings?.showCostSummaryFloatingButton),
+    showOverviewAsset: enabledUnlessFalse(settings?.showOverviewAsset),
+    showOverviewMemory: settings?.showOverviewMemory === true,
+    showOverviewDisk: settings?.showOverviewDisk === true,
     showOverviewRatings: enabledUnlessFalse(settings?.showOverviewRatings),
     showTrafficRating: enabledUnlessFalse(settings?.showTrafficRating),
     showBandwidthRating: enabledUnlessFalse(settings?.showBandwidthRating),
@@ -273,6 +284,7 @@ export function normalizeThemeSettings(
     compactShowTrafficTotal: enabledUnlessFalse(settings?.compactShowTrafficTotal),
     compactShowBilling: enabledUnlessFalse(settings?.compactShowBilling),
     compactShowUptime: enabledUnlessFalse(settings?.compactShowUptime),
+    showNodePrice: enabledUnlessFalse(settings?.showNodePrice),
     // 默认关闭(需手动开启):连接数是个小众指标,很多 agent 也不上报,所以只在显式启用时才显示。
     showConnections: settings?.showConnections === true,
     showTodayTrafficPopover: enabledUnlessFalse(settings?.showTodayTrafficPopover),

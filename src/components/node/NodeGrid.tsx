@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleDollarSign } from "lucide-react";
+import { CircleDollarSign, HardDrive, MemoryStick } from "lucide-react";
 import { Flag } from "@/components/ui/Flag";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -80,6 +80,10 @@ interface HomeOverview {
   trafficDown: number;
   netUp: number;
   netDown: number;
+  ramUsed: number;
+  ramTotal: number;
+  diskUsed: number;
+  diskTotal: number;
 }
 
 function formatCompactBytes(value: number): string {
@@ -122,6 +126,9 @@ function HomeOverviewCards({
   showTrafficRating,
   showBandwidthRating,
   showAssetRating,
+  showOverviewAsset,
+  showOverviewMemory,
+  showOverviewDisk,
   trafficRatingLabels,
   bandwidthRatingLabels,
   assetRatingLabels,
@@ -138,6 +145,9 @@ function HomeOverviewCards({
   showTrafficRating: boolean;
   showBandwidthRating: boolean;
   showAssetRating: boolean;
+  showOverviewAsset: boolean;
+  showOverviewMemory: boolean;
+  showOverviewDisk: boolean;
   trafficRatingLabels: string;
   bandwidthRatingLabels: string;
   assetRatingLabels: string;
@@ -162,6 +172,10 @@ function HomeOverviewCards({
   const trafficCompactLabel = `↑${formatCompactBytes(overview.trafficUp)} ↓${formatCompactBytes(overview.trafficDown)}`;
   const bandwidthDetailLabel = `↑ ${formatByteRateLabel(overview.netUp)} · ↓ ${formatByteRateLabel(overview.netDown)}`;
   const bandwidthCompactLabel = `↑${formatCompactBytes(overview.netUp)} ↓${formatCompactBytes(overview.netDown)}`;
+  const memoryUsedLabel = formatBytes(overview.ramUsed);
+  const memoryTotalLabel = formatBytes(overview.ramTotal);
+  const diskUsedLabel = formatBytes(overview.diskUsed);
+  const diskTotalLabel = formatBytes(overview.diskTotal);
   const trafficRating =
     showOverviewRatings && showTrafficRating
       ? getOverviewRating({
@@ -276,7 +290,31 @@ function HomeOverviewCards({
         </div>
       </article>
 
-      <article className="overview-card" data-metric="asset">
+      {showOverviewMemory && (
+        <OverviewResourceCard
+          metric="memory"
+          label="内存使用"
+          icon={<MemoryStick size={15} strokeWidth={2} />}
+          used={overview.ramUsed}
+          total={overview.ramTotal}
+          usedLabel={memoryUsedLabel}
+          totalLabel={memoryTotalLabel}
+        />
+      )}
+
+      {showOverviewDisk && (
+        <OverviewResourceCard
+          metric="disk"
+          label="磁盘使用"
+          icon={<HardDrive size={15} strokeWidth={2} />}
+          used={overview.diskUsed}
+          total={overview.diskTotal}
+          usedLabel={diskUsedLabel}
+          totalLabel={diskTotalLabel}
+        />
+      )}
+
+      {showOverviewAsset && <article className="overview-card" data-metric="asset">
         <div className="overview-card-head">
           <span className="overview-card-label">资产概览</span>
           {showDetailButton && <RenewalReminder nodes={renewalNodes} />}
@@ -288,8 +326,52 @@ function HomeOverviewCards({
           <p className="overview-card-caption">实时汇率计算</p>
           {renderRating(assetRating)}
         </div>
-      </article>
+      </article>}
     </section>
+  );
+}
+
+function OverviewResourceCard({
+  metric,
+  label,
+  icon,
+  used,
+  total,
+  usedLabel,
+  totalLabel,
+}: {
+  metric: "memory" | "disk";
+  label: string;
+  icon: ReactNode;
+  used: number;
+  total: number;
+  usedLabel: string;
+  totalLabel: string;
+}) {
+  const pct = total > 0 ? Math.max(0, Math.min(100, (used / total) * 100)) : 0;
+  const [value, unit = "B"] = usedLabel.split(" ");
+  return (
+    <article className="overview-card" data-metric={metric}>
+      <div className="overview-card-head">
+        <span className="overview-card-label overview-card-label-with-icon">
+          {icon}
+          <span>{label}</span>
+        </span>
+        <span className="overview-card-resource-pct">{pct.toFixed(pct >= 10 ? 0 : 1)}%</span>
+      </div>
+      <div className="overview-card-main">
+        <p className="overview-card-value">
+          {value}
+          <span className="overview-card-unit">{unit}</span>
+        </p>
+      </div>
+      <div className="overview-card-footer">
+        <p className="overview-card-sub" title={`已用 ${usedLabel} · 总量 ${totalLabel}`}>
+          <span className="overview-card-sub-full">已用 {usedLabel} · 总量 {totalLabel}</span>
+          <span className="overview-card-sub-compact">总量 {totalLabel}</span>
+        </p>
+      </div>
+    </article>
   );
 }
 
@@ -432,6 +514,10 @@ export function NodeGrid() {
     let trafficDown = 0;
     let netUp = 0;
     let netDown = 0;
+    let ramUsed = 0;
+    let ramTotal = 0;
+    let diskUsed = 0;
+    let diskTotal = 0;
     for (const node of visibleNodes) {
       if (node.online === true) onlineNodes += 1;
       else if (node.online === false) offlineNodes += 1;
@@ -439,6 +525,10 @@ export function NodeGrid() {
       trafficDown += node.trafficDown;
       netUp += node.netUp;
       netDown += node.netDown;
+      ramUsed += node.ramUsed ?? 0;
+      ramTotal += node.ramTotal ?? 0;
+      diskUsed += node.diskUsed ?? 0;
+      diskTotal += node.diskTotal ?? 0;
     }
 
     return {
@@ -449,13 +539,17 @@ export function NodeGrid() {
       trafficDown,
       netUp,
       netDown,
+      ramUsed,
+      ramTotal,
+      diskUsed,
+      diskTotal,
     };
   }, [visibleNodes]);
   const showHomeOverview = themeSettings.isReady && themeSettings.showHomeOverview;
   const showTrafficPopover = themeSettings.isReady && themeSettings.showTodayTrafficPopover;
   const hasNodes = visibleMeta.length > 0;
   // 卡内入口与悬浮入口互斥，避免重复操作入口。
-  const showAssetCard = showHomeOverview && hasNodes;
+  const showAssetCard = showHomeOverview && themeSettings.showOverviewAsset && hasNodes;
   const showCostDetailButton =
     showAssetCard && themeSettings.isReady && themeSettings.showCostSummary;
   const showCostFloatingButton =
@@ -686,6 +780,9 @@ export function NodeGrid() {
           showTrafficRating={themeSettings.showTrafficRating}
           showBandwidthRating={themeSettings.showBandwidthRating}
           showAssetRating={themeSettings.showAssetRating}
+          showOverviewAsset={themeSettings.showOverviewAsset}
+          showOverviewMemory={themeSettings.showOverviewMemory}
+          showOverviewDisk={themeSettings.showOverviewDisk}
           trafficRatingLabels={themeSettings.trafficRatingLabels}
           bandwidthRatingLabels={themeSettings.bandwidthRatingLabels}
           assetRatingLabels={themeSettings.assetRatingLabels}

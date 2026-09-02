@@ -5,6 +5,7 @@ import { clsx } from "clsx";
 import { Flag } from "@/components/ui/Flag";
 import { OsLogo } from "@/components/ui/OsLogo";
 import { useNodeCardModel } from "@/hooks/useNodeCardModel";
+import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useMetricColorsVersion } from "@/hooks/useMetricColors";
 import { formatBytes } from "@/utils/format";
@@ -231,6 +232,7 @@ const NodeRow = memo(function NodeRow({ uuid }: { uuid: string }) {
   const model = useNodeCardModel(uuid, {
     pingBucketCount: LIST_PING_BUCKETS,
   });
+  const themeSettings = useThemeSettings();
 
   if (!model.node) {
     return <div className="node-list-row is-loading" aria-busy />;
@@ -261,6 +263,7 @@ const NodeRow = memo(function NodeRow({ uuid }: { uuid: string }) {
   );
   const listPingStatus = formatListPingStatus(ping.lastValue, listPingState);
   const detailLabels = nodeDetailLinkLabels(node.name, osName);
+  const showNodePrice = themeSettings.isReady && themeSettings.showNodePrice;
   const usedPct = `${Math.round(clamp01(traffic.fraction) * 100)}%`;
   const rowLabel = [
     node.name,
@@ -294,9 +297,9 @@ const NodeRow = memo(function NodeRow({ uuid }: { uuid: string }) {
               {node.name}
             </span>
           </div>
-          {(renewalPrice || footerTags.length > 0) && (
+          {((showNodePrice && renewalPrice) || footerTags.length > 0) && (
             <div className="node-list-chips" title={footerTags.length > 0 ? joinTagTitle(footerTags) : undefined}>
-              {renewalPrice && (
+              {showNodePrice && renewalPrice && (
                 <span className="dstatus-price-chip">
                   <CircleDollarSign size={12} strokeWidth={2.2} />
                   {renewalPrice}

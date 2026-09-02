@@ -446,6 +446,7 @@ function CompactNodeInfoStrip({
   downRate,
   showTrafficTotal,
   showBilling,
+  showNodePrice,
   showConnections,
   expire,
   expireColor,
@@ -457,6 +458,7 @@ function CompactNodeInfoStrip({
   downRate: ByteRateDisplay;
   showTrafficTotal: boolean;
   showBilling: boolean;
+  showNodePrice: boolean;
   showConnections: boolean;
   expire: CompactExpire;
   expireColor: string;
@@ -525,11 +527,13 @@ function CompactNodeInfoStrip({
             value={formatCompactExpire(expire)}
             color={expireColor}
           />
-          <CompactInfoRow
-            icon={<CircleDollarSign size={12} strokeWidth={2.2} />}
-            value={renewalPrice || "未填"}
-            color={renewalPrice ? "var(--status-success)" : "var(--text-tertiary)"}
-          />
+          {showNodePrice && (
+            <CompactInfoRow
+              icon={<CircleDollarSign size={12} strokeWidth={2.2} />}
+              value={renewalPrice || "未填"}
+              color={renewalPrice ? "var(--status-success)" : "var(--text-tertiary)"}
+            />
+          )}
         </CompactInfoTile>
       )}
       {showConnections && (
@@ -707,6 +711,7 @@ export const CompactNodeCard = memo(function CompactNodeCard({
   const showBilling = themeSettings.isReady && themeSettings.compactShowBilling;
   const showUptime = themeSettings.isReady && themeSettings.compactShowUptime;
   const showConnections = themeSettings.isReady && themeSettings.showConnections;
+  const showNodePrice = themeSettings.isReady && themeSettings.showNodePrice;
   // 开关关闭或节点离线时,完全跳过格式化工作。
   const uptimeLabel = showUptime && !isOffline ? formatCompactUptime(node.uptime) : "";
 
@@ -726,10 +731,11 @@ export const CompactNodeCard = memo(function CompactNodeCard({
         downRate={downRate}
         showTrafficTotal={showTrafficTotal}
         showBilling={showBilling}
+        showNodePrice={showNodePrice}
         showConnections={showConnections}
         expire={expire}
         expireColor={expireColor}
-        renewalPrice={renewalPrice}
+        renewalPrice={showNodePrice ? renewalPrice : null}
       />
       <CompactTrafficBar traffic={traffic} uptimeLabel={uptimeLabel} />
       {homepagePingLines.length === HOMEPAGE_MULTI_PING_TASK_COUNT ? (

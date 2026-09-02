@@ -77,6 +77,28 @@ describe("normalizeThemeSettings", () => {
     expect(normalizeThemeSettings({ showOverviewRatings: false }).showOverviewRatings).toBe(false);
   });
 
+  it("keeps overview resource cards opt-in and node prices visible by default", () => {
+    expect(normalizeThemeSettings({})).toMatchObject({
+      showOverviewAsset: true,
+      showOverviewMemory: false,
+      showOverviewDisk: false,
+      showNodePrice: true,
+    });
+    expect(
+      normalizeThemeSettings({
+        showOverviewAsset: false,
+        showOverviewMemory: true,
+        showOverviewDisk: true,
+        showNodePrice: false,
+      }),
+    ).toMatchObject({
+      showOverviewAsset: false,
+      showOverviewMemory: true,
+      showOverviewDisk: true,
+      showNodePrice: false,
+    });
+  });
+
   it("normalizes homepage multi-ping tasks while preserving an enabled draft for repair", () => {
     expect(normalizeThemeSettings({}).enableHomepageMultiPing).toBe(false);
     expect(

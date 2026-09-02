@@ -102,6 +102,7 @@ export const NodeCard = memo(function NodeCard({
     osName,
   } = model;
   const showConnections = themeSettings.isReady && themeSettings.showConnections;
+  const showNodePrice = themeSettings.isReady && themeSettings.showNodePrice;
 
   return (
     <article
@@ -181,7 +182,7 @@ export const NodeCard = memo(function NodeCard({
           expireColor={expireColor}
           uptime={uptime}
           footerTags={footerTags}
-          renewalPrice={renewalPrice}
+          renewalPrice={showNodePrice ? renewalPrice : null}
         />
       </div>
     </article>

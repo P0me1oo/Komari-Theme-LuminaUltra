@@ -18,6 +18,7 @@ import { IpStackBadges } from "./IpStackBadges";
 import { NodeTodayTrafficPopover } from "./NodeTodayTrafficPopover";
 import { HealthBucketTooltip } from "./HealthBucketTooltip";
 import { useNodeCardModel } from "@/hooks/useNodeCardModel";
+import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { speedRateColor } from "@/utils/metricTone";
 import { supportsFineHover } from "@/utils/mediaQuery";
 import {
@@ -403,6 +404,7 @@ export const MiniNodeCard = memo(function MiniNodeCard({
   const model = useNodeCardModel(uuid, {
     pingBucketCount: HEALTH_BAR_COUNT,
   });
+  const themeSettings = useThemeSettings();
 
   if (!model.node) {
     return <article className="mini-node-card animate-pulse" aria-busy />;
@@ -425,6 +427,7 @@ export const MiniNodeCard = memo(function MiniNodeCard({
     isOffline,
     osName,
   } = model;
+  const showNodePrice = themeSettings.isReady && themeSettings.showNodePrice;
 
   return (
     <article className={clsx("mini-node-card", isOffline && "is-offline")}>
@@ -433,7 +436,12 @@ export const MiniNodeCard = memo(function MiniNodeCard({
         osName={osName}
         showTodayTraffic={showTodayTraffic}
       />
-      <MiniChips tags={footerTags} renewalPrice={renewalPrice} ipv4={node.ipv4} ipv6={node.ipv6} />
+      <MiniChips
+        tags={footerTags}
+        renewalPrice={showNodePrice ? renewalPrice : null}
+        ipv4={node.ipv4}
+        ipv6={node.ipv6}
+      />
       <MiniVitals node={node} loadFraction={loadFraction} />
       <MiniFlow node={node} upRate={upRate} downRate={downRate} />
       <MiniHealth

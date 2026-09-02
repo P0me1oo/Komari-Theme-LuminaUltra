@@ -103,6 +103,8 @@
 .overview-card[data-metric="traffic"] { --metric-accent: var(--traffic-up); }
 .overview-card[data-metric="bandwidth"] { --metric-accent: var(--speed-high); }
 .overview-card[data-metric="asset"] { --metric-accent: var(--accent-500); }
+.overview-card[data-metric="memory"] { --metric-accent: var(--progress-memory); }
+.overview-card[data-metric="disk"] { --metric-accent: var(--progress-disk); }
 
 /* 暗色依靠表面色阶建立层级，不叠白色顶光或指标色氛围。背景图模式仍由 --surface-a
    保留用户配置的透明度。 */
@@ -128,6 +130,25 @@
   text-transform: uppercase;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.overview-card-label-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.overview-card-label-with-icon svg {
+  flex: 0 0 auto;
+  color: var(--metric-accent);
+}
+
+.overview-card-resource-pct {
+  flex: 0 0 auto;
+  color: var(--metric-accent);
+  font-size: 12px;
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
 }
 
 .overview-card-action {

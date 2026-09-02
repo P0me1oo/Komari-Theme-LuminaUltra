@@ -296,6 +296,9 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     homeSortDirection: settings.homeSortDirection,
     showCostSummary: settings.showCostSummary,
     showCostSummaryFloatingButton: settings.showCostSummaryFloatingButton,
+    showOverviewAsset: settings.showOverviewAsset,
+    showOverviewMemory: settings.showOverviewMemory,
+    showOverviewDisk: settings.showOverviewDisk,
     showOverviewRatings: settings.showOverviewRatings,
     showTrafficRating: settings.showTrafficRating,
     showBandwidthRating: settings.showBandwidthRating,
@@ -306,6 +309,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     compactShowTrafficTotal: settings.compactShowTrafficTotal,
     compactShowBilling: settings.compactShowBilling,
     compactShowUptime: settings.compactShowUptime,
+    showNodePrice: settings.showNodePrice,
     showConnections: settings.showConnections,
     showTodayTrafficPopover: settings.showTodayTrafficPopover,
     hiddenNodes: settings.hiddenNodes,
@@ -1934,12 +1938,51 @@ export function ThemeManage() {
       >
         <div>
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <span className="text-[13px] font-medium text-[var(--text-primary)]">首页总览</span>
+            <span className="text-[11px] text-[var(--text-tertiary)]">
+              关闭资产概览后，可用内存或磁盘卡片补位。
+            </span>
+          </div>
+          <div className="mt-2 grid gap-3 md:grid-cols-3">
+            <ToggleRow
+              field="showOverviewAsset"
+              title="显示资产概览"
+              desc="显示所有可见节点的剩余价值。"
+              checked={draft.showOverviewAsset}
+              onPatch={patch}
+            />
+            <ToggleRow
+              field="showOverviewMemory"
+              title="显示内存信息"
+              desc="汇总所有可见节点的内存已用量与总量。"
+              checked={draft.showOverviewMemory}
+              onPatch={patch}
+            />
+            <ToggleRow
+              field="showOverviewDisk"
+              title="显示硬盘信息"
+              desc="汇总所有可见节点的磁盘已用量与总量。"
+              checked={draft.showOverviewDisk}
+              onPatch={patch}
+            />
+          </div>
+        </div>
+
+        <div>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <span className="text-[13px] font-medium text-[var(--text-primary)]">跨视图设置</span>
             <span className="text-[11px] text-[var(--text-tertiary)]">
               适用于多个卡片尺寸，具体范围以每项说明为准。
             </span>
           </div>
           <div className="mt-2 grid gap-3 md:grid-cols-2">
+            <ToggleRow
+              field="showNodePrice"
+              title="显示服务器价格"
+              desc="控制节点卡片底部、迷你卡片和列表中的续费价格；关闭后不影响资产统计页。"
+              checked={draft.showNodePrice}
+              onPatch={patch}
+            />
             <ToggleRow
               field="showTodayTrafficPopover"
               title="显示今日流量悬浮窗"

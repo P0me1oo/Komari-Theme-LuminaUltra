@@ -133,6 +133,9 @@ export interface ThemeSettings {
   homeSortDirection?: "asc" | "desc";
   showCostSummary?: boolean;
   showCostSummaryFloatingButton?: boolean;
+  showOverviewAsset?: boolean;
+  showOverviewMemory?: boolean;
+  showOverviewDisk?: boolean;
   showOverviewRatings?: boolean;
   showTrafficRating?: boolean;
   showBandwidthRating?: boolean;
@@ -143,6 +146,7 @@ export interface ThemeSettings {
   compactShowTrafficTotal?: boolean;
   compactShowBilling?: boolean;
   compactShowUptime?: boolean;
+  showNodePrice?: boolean;
   showConnections?: boolean;
   showTodayTrafficPopover?: boolean;
   hiddenNodes?: string[];

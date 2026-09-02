@@ -79,6 +79,9 @@ describe("normalizeThemeSettings", () => {
 
   it("keeps overview resource cards opt-in and node prices visible by default", () => {
     expect(normalizeThemeSettings({})).toMatchObject({
+      showOverviewOnline: true,
+      showOverviewBandwidth: true,
+      showOverviewTraffic: true,
       showOverviewAsset: true,
       showOverviewMemory: false,
       showOverviewDisk: false,
@@ -86,12 +89,18 @@ describe("normalizeThemeSettings", () => {
     });
     expect(
       normalizeThemeSettings({
+        showOverviewOnline: false,
+        showOverviewBandwidth: false,
+        showOverviewTraffic: false,
         showOverviewAsset: false,
         showOverviewMemory: true,
         showOverviewDisk: true,
         showNodePrice: false,
       }),
     ).toMatchObject({
+      showOverviewOnline: false,
+      showOverviewBandwidth: false,
+      showOverviewTraffic: false,
       showOverviewAsset: false,
       showOverviewMemory: true,
       showOverviewDisk: true,

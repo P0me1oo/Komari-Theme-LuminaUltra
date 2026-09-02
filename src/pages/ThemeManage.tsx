@@ -296,6 +296,9 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     homeSortDirection: settings.homeSortDirection,
     showCostSummary: settings.showCostSummary,
     showCostSummaryFloatingButton: settings.showCostSummaryFloatingButton,
+    showOverviewOnline: settings.showOverviewOnline,
+    showOverviewBandwidth: settings.showOverviewBandwidth,
+    showOverviewTraffic: settings.showOverviewTraffic,
     showOverviewAsset: settings.showOverviewAsset,
     showOverviewMemory: settings.showOverviewMemory,
     showOverviewDisk: settings.showOverviewDisk,
@@ -1940,10 +1943,31 @@ export function ThemeManage() {
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <span className="text-[13px] font-medium text-[var(--text-primary)]">首页总览</span>
             <span className="text-[11px] text-[var(--text-tertiary)]">
-              关闭资产概览后，可用内存或磁盘卡片补位。
+              可分别控制六种总览卡片；空间不足时横向滚动查看。
             </span>
           </div>
-          <div className="mt-2 grid gap-3 md:grid-cols-3">
+          <div className="overview-toggle-strip mt-2">
+            <ToggleRow
+              field="showOverviewOnline"
+              title="显示在线节点"
+              desc="展示在线与离线节点数量及比例。"
+              checked={draft.showOverviewOnline}
+              onPatch={patch}
+            />
+            <ToggleRow
+              field="showOverviewBandwidth"
+              title="显示实时带宽"
+              desc="汇总所有可见节点的实时上下行速率。"
+              checked={draft.showOverviewBandwidth}
+              onPatch={patch}
+            />
+            <ToggleRow
+              field="showOverviewTraffic"
+              title="显示累计流量"
+              desc="汇总所有可见节点的上下行累计流量。"
+              checked={draft.showOverviewTraffic}
+              onPatch={patch}
+            />
             <ToggleRow
               field="showOverviewAsset"
               title="显示资产概览"

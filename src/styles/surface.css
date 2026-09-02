@@ -731,6 +731,21 @@ body::after {
   gap: 10px;
 }
 
+/* 首页总览开关保持一行；窄屏通过横向滚动容纳完整选项，避免勾选项重新排版。 */
+.overview-toggle-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.overview-toggle-strip > label {
+  min-width: 210px;
+  flex: 1 0 0;
+}
+
 .theme-manage-button {
   display: inline-flex;
   align-items: center;

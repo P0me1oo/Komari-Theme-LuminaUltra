@@ -133,6 +133,9 @@ export interface ThemeSettings {
   homeSortDirection?: "asc" | "desc";
   showCostSummary?: boolean;
   showCostSummaryFloatingButton?: boolean;
+  showOverviewOnline?: boolean;
+  showOverviewBandwidth?: boolean;
+  showOverviewTraffic?: boolean;
   showOverviewAsset?: boolean;
   showOverviewMemory?: boolean;
   showOverviewDisk?: boolean;

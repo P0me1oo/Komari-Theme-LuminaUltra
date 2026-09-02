@@ -126,6 +126,9 @@ function HomeOverviewCards({
   showTrafficRating,
   showBandwidthRating,
   showAssetRating,
+  showOverviewOnline,
+  showOverviewBandwidth,
+  showOverviewTraffic,
   showOverviewAsset,
   showOverviewMemory,
   showOverviewDisk,
@@ -145,6 +148,9 @@ function HomeOverviewCards({
   showTrafficRating: boolean;
   showBandwidthRating: boolean;
   showAssetRating: boolean;
+  showOverviewOnline: boolean;
+  showOverviewBandwidth: boolean;
+  showOverviewTraffic: boolean;
   showOverviewAsset: boolean;
   showOverviewMemory: boolean;
   showOverviewDisk: boolean;
@@ -210,7 +216,7 @@ function HomeOverviewCards({
 
   return (
     <section className={`home-overview${dense ? " is-dense" : ""}`} aria-label="首页总览">
-      <article className="overview-card" data-metric="online">
+      {showOverviewOnline && <article className="overview-card" data-metric="online">
         <span className="overview-card-label">在线节点</span>
         <div className="overview-card-main">
           <p className="overview-card-value">
@@ -238,9 +244,9 @@ function HomeOverviewCards({
             <span className="overview-bar-offline" style={{ width: `${offlinePct}%` }} />
           </div>
         )}
-      </article>
+      </article>}
 
-      <article className="overview-card" data-metric="bandwidth">
+      {showOverviewBandwidth && <article className="overview-card" data-metric="bandwidth">
         <span className="overview-card-label">实时带宽</span>
         <div className="overview-card-main">
           <p
@@ -258,9 +264,9 @@ function HomeOverviewCards({
           </p>
           {renderRating(bandwidthRating)}
         </div>
-      </article>
+      </article>}
 
-      <article className="overview-card" data-metric="traffic">
+      {showOverviewTraffic && <article className="overview-card" data-metric="traffic">
         <div className="overview-card-head">
           <span className="overview-card-label">累计流量</span>
           <Link
@@ -288,7 +294,7 @@ function HomeOverviewCards({
           </p>
           {renderRating(trafficRating)}
         </div>
-      </article>
+      </article>}
 
       {showOverviewMemory && (
         <OverviewResourceCard
@@ -546,6 +552,13 @@ export function NodeGrid() {
     };
   }, [visibleNodes]);
   const showHomeOverview = themeSettings.isReady && themeSettings.showHomeOverview;
+  const showAnyOverviewCard =
+    themeSettings.showOverviewOnline ||
+    themeSettings.showOverviewBandwidth ||
+    themeSettings.showOverviewTraffic ||
+    themeSettings.showOverviewAsset ||
+    themeSettings.showOverviewMemory ||
+    themeSettings.showOverviewDisk;
   const showTrafficPopover = themeSettings.isReady && themeSettings.showTodayTrafficPopover;
   const hasNodes = visibleMeta.length > 0;
   // 卡内入口与悬浮入口互斥，避免重复操作入口。
@@ -768,7 +781,7 @@ export function NodeGrid() {
         </Link>
       )}
       <HomeBrand siteName={siteName} />
-      {showHomeOverview && (
+      {showHomeOverview && showAnyOverviewCard && (
         <HomeOverviewCards
           overview={overview}
           dense={mode === "mini" || mode === "list"}
@@ -780,6 +793,9 @@ export function NodeGrid() {
           showTrafficRating={themeSettings.showTrafficRating}
           showBandwidthRating={themeSettings.showBandwidthRating}
           showAssetRating={themeSettings.showAssetRating}
+          showOverviewOnline={themeSettings.showOverviewOnline}
+          showOverviewBandwidth={themeSettings.showOverviewBandwidth}
+          showOverviewTraffic={themeSettings.showOverviewTraffic}
           showOverviewAsset={themeSettings.showOverviewAsset}
           showOverviewMemory={themeSettings.showOverviewMemory}
           showOverviewDisk={themeSettings.showOverviewDisk}

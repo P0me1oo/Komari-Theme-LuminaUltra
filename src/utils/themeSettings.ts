@@ -60,6 +60,9 @@ export interface ResolvedThemeSettings {
   homeSortDirection: HomeSortDirection;
   showCostSummary: boolean;
   showCostSummaryFloatingButton: boolean;
+  showOverviewOnline: boolean;
+  showOverviewBandwidth: boolean;
+  showOverviewTraffic: boolean;
   showOverviewAsset: boolean;
   showOverviewMemory: boolean;
   showOverviewDisk: boolean;
@@ -114,6 +117,9 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   homeSortDirection: HOME_SORT_NATURAL_DIRECTION.default,
   showCostSummary: true,
   showCostSummaryFloatingButton: true,
+  showOverviewOnline: true,
+  showOverviewBandwidth: true,
+  showOverviewTraffic: true,
   showOverviewAsset: true,
   showOverviewMemory: false,
   showOverviewDisk: false,
@@ -271,6 +277,9 @@ export function normalizeThemeSettings(
     ...normalizeHomeSortDefault(settings?.homeSortField, settings?.homeSortDirection),
     showCostSummary: enabledUnlessFalse(settings?.showCostSummary),
     showCostSummaryFloatingButton: enabledUnlessFalse(settings?.showCostSummaryFloatingButton),
+    showOverviewOnline: enabledUnlessFalse(settings?.showOverviewOnline),
+    showOverviewBandwidth: enabledUnlessFalse(settings?.showOverviewBandwidth),
+    showOverviewTraffic: enabledUnlessFalse(settings?.showOverviewTraffic),
     showOverviewAsset: enabledUnlessFalse(settings?.showOverviewAsset),
     showOverviewMemory: settings?.showOverviewMemory === true,
     showOverviewDisk: settings?.showOverviewDisk === true,

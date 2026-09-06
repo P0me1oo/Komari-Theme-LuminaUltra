@@ -8,6 +8,10 @@
 
 基于 [shanyang242/Komari-Theme-LuminaPlus](https://github.com/shanyang242/Komari-Theme-LuminaPlus) 二次开发并更名为 LuminaUltra；其上游基于 [komari-theme-Lumina](https://github.com/stqfdyr/komari-theme-Lumina)。感谢 [shanyang242](https://github.com/shanyang242) 和原作者 [stqfdyr](https://github.com/stqfdyr) 开源相关主题。
 
+## 当前版本
+
+LuminaUltra **v1.5.0** 已同步 [LuminaPlus v1.3.2](https://github.com/shanyang242/Komari-Theme-LuminaPlus/releases/tag/v1.3.2)（上游提交 `042d407`），新增 Ping 丢包率图表和背景动效。保留 LuminaUltra 的六张总览卡片单行布局、各卡片显示开关，以及独立的服务器价格和到期时间设置。完整变更见 [v1.5.0 更新说明](.github/release-notes/v1.5.0.md)。
+
 ## 效果预览
 
 <p align="center">
@@ -115,6 +119,8 @@ chmod 644 /komari/data/theme/LuminaUltra/dist/assets/my-background.mp4
 
 实例详情页优化 Ping 与负载图表展示，支持断点连线、手动刷新和更稳定的图表尺寸。
 
+Ping 图表可切换“延迟 / 丢包率”。丢包率按原始样本数量加权计算，支持后端聚合数据和旧版 Ping 记录；“削峰平滑”仅用于延迟视图。
+
 <p align="center">
   <img src="docs/images/v1.1.9/instance-ping.png" alt="实例详情 Ping 图表" width="70%">
 </p>
@@ -167,6 +173,7 @@ chmod 644 /komari/data/theme/LuminaUltra/dist/assets/my-background.mp4
 
 - 在“卡片显示项”中分别控制小卡片的到期时间和节点卡片底部的续费价格（例如 `¥7/月`）；价格开关同步作用于大卡片、小卡片、迷你卡片和列表视图，资产统计页仍保留完整费用明细。
 - 在“首页总览”中分别控制在线节点、实时带宽、累计流量、资产概览、内存信息和硬盘信息卡片；开关全部启用时六张卡片保持在同一行，窄屏可横向滚动查看。资源卡片显示所有可见节点的已用量、总量和使用率。
+- 在“03 背景”中开启“背景动效”，可选择樱花飘落、细雨、缓雪、秋叶飘落、庆典彩纸或烟花。动效默认关闭，可与背景图、背景视频独立设置；浏览器启用“减少动态效果”或省流量模式时不播放。
 
 <p align="center">
   <img src="docs/images/v1.1.7/settings-overview.png" alt="总览评级配置" width="70%">

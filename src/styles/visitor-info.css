@@ -7,36 +7,35 @@
   display: flex;
   justify-content: center;
   pointer-events: none;
+  container-type: inline-size;
 }
 
 .visitor-info-card {
-  width: fit-content;
-  max-width: min(400px, 100%);
+  --visitor-panel-width: min(398px, calc(100cqw - 2px));
+  position: relative;
+  box-sizing: content-box;
+  width: var(--visitor-card-width, 0px);
+  height: var(--visitor-card-height, 0px);
+  max-width: calc(100% - 2px);
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface-a);
   box-shadow: 0 4px 16px -10px rgb(0 0 0 / 24%);
   color: var(--text-secondary);
   pointer-events: auto;
-  transition: background 160ms ease;
-}
-
-.visitor-info-card[data-expanded="true"] {
-  width: min(400px, 100%);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.5;
+  transition: width 240ms linear, height 240ms linear, background 240ms linear;
 }
 
 .visitor-info-trigger {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
-  min-height: 30px;
-  max-height: calc(100dvh - 80px - env(safe-area-inset-bottom));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 6px 10px;
+  height: 100%;
   border-radius: inherit;
-  text-align: left;
-  font-size: 12px;
-  line-height: 1.5;
 }
 
 .visitor-info-trigger:focus-visible {
@@ -44,14 +43,48 @@
   outline-offset: 3px;
 }
 
-.visitor-info-card[data-expanded="true"] .visitor-info-trigger {
-  padding: 10px 12px;
+.visitor-info-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.visitor-info-panel {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  /* 先淡出旧内容，再淡入新内容，避免两层文字重叠。 */
+  transition: opacity 80ms linear, visibility 0s linear 80ms;
+}
+
+.visitor-info-panel[aria-hidden="false"] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 160ms linear 80ms, visibility 0s linear;
 }
 
 .visitor-info-summary {
   display: flex;
+  width: max-content;
+  max-width: var(--visitor-panel-width);
+  min-height: 30px;
   align-items: center;
   gap: 10px;
+  padding: 6px 10px;
+}
+
+.visitor-info-details {
+  width: var(--visitor-panel-width);
+  max-height: calc(100dvh - 80px - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 12px;
 }
 
 .visitor-info-location {
@@ -80,7 +113,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px 14px;
-  animation: visitor-info-reveal 160ms ease;
+  margin: 0;
 }
 
 .visitor-info-row {
@@ -97,6 +130,7 @@
 }
 
 .visitor-info-value {
+  margin: 0;
   color: var(--text-primary);
   font-size: 12px;
   line-height: 1.5;
@@ -109,7 +143,7 @@
 }
 
 .visitor-info-retry {
-  margin: 0 12px 10px;
+  margin-top: 10px;
   color: var(--accent-500);
   font-size: 12px;
 }
@@ -121,11 +155,6 @@
 
 .app-main.has-visitor-info {
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
-}
-
-@keyframes visitor-info-reveal {
-  from { opacity: 0; transform: translateY(3px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 720px) {
@@ -152,11 +181,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .visitor-info-card {
+  .visitor-info-card,
+  .visitor-info-panel,
+  .visitor-info-panel[aria-hidden="false"] {
     transition: none;
-  }
-
-  .visitor-info-grid {
-    animation: none;
   }
 }

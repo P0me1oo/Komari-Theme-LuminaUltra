@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getVisitorGeoInfo } from "@/services/visitorInfo";
 import { detectVisitorClient, formatVisitTime, maskVisitorIp } from "@/utils/visitorInfo";
@@ -9,6 +9,10 @@ export function VisitorInfoCard() {
   const [visitTime] = useState(() => formatVisitTime(new Date(performance.timeOrigin || Date.now())));
   const rootRef = useRef<HTMLElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const summaryRef = useRef<HTMLDivElement | null>(null);
+  const detailsRef = useRef<HTMLDivElement | null>(null);
+  const hasMeasuredRef = useRef(false);
+  const summaryId = useId();
   const detailsId = useId();
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["visitor-geo-info"],
@@ -19,6 +23,31 @@ export function VisitorInfoCard() {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const panel = expanded ? detailsRef.current : summaryRef.current;
+    if (!root || !panel) return;
+
+    const measure = () => {
+      const { width, height } = panel.getBoundingClientRect();
+      // 内容按目标宽度排版，外壳单独过渡，避免动画中反复换行。
+      if (!hasMeasuredRef.current) root.style.transition = "none";
+      root.style.setProperty("--visitor-card-width", `${width}px`);
+      root.style.setProperty("--visitor-card-height", `${height}px`);
+      if (!hasMeasuredRef.current) {
+        // 首次挂载直接显示正常尺寸，后续切换才启用过渡。
+        void root.offsetWidth;
+        root.style.removeProperty("transition");
+        hasMeasuredRef.current = true;
+      }
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [expanded]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -44,7 +73,7 @@ export function VisitorInfoCard() {
   const rows = [
     { label: "来源", value: location },
     { label: "设备", value: client.device },
-    { label: "IP", value: ip, numeric: true },
+    { label: "IP", value: expanded ? ip : maskVisitorIp(ip), numeric: true },
     { label: "浏览器", value: client.browser },
     { label: "运营商", value: isp },
     { label: "访问时间", value: visitTime, numeric: true },
@@ -57,46 +86,63 @@ export function VisitorInfoCard() {
         data-expanded={expanded}
         aria-label="来源与网络信息"
         ref={rootRef}
+        onClick={() => {
+          triggerRef.current?.focus({ preventScroll: true });
+          setExpanded((value) => !value);
+        }}
       >
         <button
           type="button"
           className="visitor-info-trigger"
           ref={triggerRef}
           aria-expanded={expanded}
-          aria-controls={expanded ? detailsId : undefined}
-          aria-describedby={detailsId}
+          aria-controls={detailsId}
+          aria-describedby={expanded ? detailsId : summaryId}
           aria-label={`${expanded ? "收起" : "展开"}来源与网络信息`}
-          onClick={() => setExpanded((value) => !value)}
-        >
-          {expanded ? (
-            <span id={detailsId} className="visitor-info-grid">
-              {rows.map((row) => (
-                <span className="visitor-info-row" key={row.label}>
-                  <span className="visitor-info-label">{row.label}</span>
-                  <span className={`visitor-info-value${row.numeric ? " visitor-info-numeric" : ""}`}>
-                    {row.value}
-                  </span>
-                </span>
-              ))}
-            </span>
-          ) : (
-            <span id={detailsId} className="visitor-info-summary">
-              <span className="visitor-info-location" title={location} aria-live="polite">{location}</span>
-              <span className="visitor-info-ip">{maskVisitorIp(ip)}</span>
-              <span className="visitor-info-browser">{client.browser}</span>
-            </span>
-          )}
-        </button>
-        {expanded && !data && (
-          <button
-            type="button"
-            className="visitor-info-retry"
-            disabled={isFetching}
-            onClick={() => void refetch()}
+        />
+        <div className="visitor-info-viewport">
+          <div
+            id={summaryId}
+            ref={summaryRef}
+            className="visitor-info-panel visitor-info-summary"
+            aria-hidden={expanded}
           >
-            {isFetching ? "正在获取网络信息" : "重新获取网络信息"}
-          </button>
-        )}
+            <span className="visitor-info-location" title={location} aria-live="polite">{location}</span>
+            <span className="visitor-info-ip">{maskVisitorIp(ip)}</span>
+            <span className="visitor-info-browser">{client.browser}</span>
+          </div>
+          <div
+            id={detailsId}
+            ref={detailsRef}
+            className="visitor-info-panel visitor-info-details"
+            aria-hidden={!expanded}
+            inert={!expanded}
+          >
+            <dl className="visitor-info-grid">
+              {rows.map((row) => (
+                <div className="visitor-info-row" key={row.label}>
+                  <dt className="visitor-info-label">{row.label}</dt>
+                  <dd className={`visitor-info-value${row.numeric ? " visitor-info-numeric" : ""}`}>
+                    {row.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            {!data && (
+              <button
+                type="button"
+                className="visitor-info-retry"
+                disabled={isFetching}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void refetch();
+                }}
+              >
+                {isFetching ? "正在获取网络信息" : "重新获取网络信息"}
+              </button>
+            )}
+          </div>
+        </div>
       </section>
     </div>
   );

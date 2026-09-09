@@ -1,0 +1,114 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getVisitorGeoInfo } from "@/services/visitorInfo";
+
+function json(value: unknown, status = 200) {
+  return new Response(JSON.stringify(value), { status });
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+describe("访客网络信息查询", () => {
+  it("首个来源成功后停止查询，并使用地区作为缺失城市的回退值", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json({
+      ip: "203.0.113.42",
+      organization: "示例网络",
+      country: "新加坡",
+      region: "Singapore",
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getVisitorGeoInfo()).resolves.toEqual({
+      ip: "203.0.113.42",
+      isp: "示例网络",
+      location: "新加坡 · Singapore",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("首个来源返回无效 IP 时使用备用来源", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json({ ip: "not-an-ip" }))
+      .mockResolvedValueOnce(json({
+        success: true,
+        ip: "2001:db8::42",
+        country: "德国",
+        city: "Frankfurt",
+        connection: { org: "备用网络" },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getVisitorGeoInfo()).resolves.toEqual({
+      ip: "2001:db8::42",
+      isp: "备用网络",
+      location: "德国 · Frankfurt",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("HTTP 错误和服务声明失败时继续尝试第三个来源", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json({}, 429))
+      .mockResolvedValueOnce(json({ success: false, ip: "192.0.2.1" }))
+      .mockResolvedValueOnce(json({
+        ip: "198.51.100.24",
+        company: { name: "第三方网络" },
+        location: { country: "日本", state: "Tokyo" },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getVisitorGeoInfo()).resolves.toEqual({
+      ip: "198.51.100.24",
+      isp: "第三方网络",
+      location: "日本 · Tokyo",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("所有来源失败时返回不可用状态", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("网络不可达"));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getVisitorGeoInfo()).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("响应正文超时后切换来源并清理计时器", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(async (_url: string, init: RequestInit) => ({
+        ok: true,
+        json: () => new Promise((_resolve, reject) => {
+          init.signal!.addEventListener("abort", () => reject(init.signal!.reason), { once: true });
+        }),
+      }))
+      .mockResolvedValueOnce(json({ ip: "192.0.2.1" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const request = getVisitorGeoInfo();
+    await vi.advanceTimersByTimeAsync(4_000);
+    await expect(request).resolves.toMatchObject({ ip: "192.0.2.1" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("外部取消后立即停止，不请求备用来源", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const fetchMock = vi.fn((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+      init.signal!.addEventListener("abort", () => reject(init.signal!.reason), { once: true });
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const assertion = expect(getVisitorGeoInfo(controller.signal)).rejects.toMatchObject({ name: "AbortError" });
+    controller.abort();
+    await assertion;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("已取消的请求不访问任何来源", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getVisitorGeoInfo(controller.signal)).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

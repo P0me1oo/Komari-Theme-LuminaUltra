@@ -20,6 +20,7 @@ import {
   formatByteRateLabel,
 } from "@/utils/format";
 import { calculateCostSummary, formatCnyMoney, getExchangeRates } from "@/utils/cost";
+import { canAccessAssets } from "@/utils/assetsAccess";
 import { useHiddenNodeUuids } from "@/hooks/useVisibleNodes";
 import { speedRateColor } from "@/utils/metricTone";
 import {
@@ -563,10 +564,11 @@ export function NodeGrid() {
   const hasNodes = visibleMeta.length > 0;
   // 卡内入口与悬浮入口互斥，避免重复操作入口。
   const showAssetCard = showHomeOverview && themeSettings.showOverviewAsset && hasNodes;
+  const assetsAllowed = themeSettings.isReady && canAccessAssets(themeSettings, me?.logged_in === true);
   const showCostDetailButton =
-    showAssetCard && themeSettings.isReady && themeSettings.showCostSummary;
+    showAssetCard && assetsAllowed && themeSettings.showCostSummary;
   const showCostFloatingButton =
-    themeSettings.isReady &&
+    assetsAllowed &&
     themeSettings.showCostSummaryFloatingButton &&
     hasNodes &&
     !showCostDetailButton;
@@ -646,7 +648,7 @@ export function NodeGrid() {
         : groupFilteredNodes.filter((node) => getDisplayRegionCode(node.region) === selectedRegion),
     [groupFilteredNodes, selectedRegion],
   );
-  // 排序在分组筛选之后。离线永远沉底(写死,见 homeSort);实时网速走防抖(键平滑+滞回+5s 重排)。
+  // 排序在分组、地区筛选之后；离线优先可将离线节点前置，实时网速仍走平滑与定时重排。
   const orderedNodes = useHomeNodeOrder({
     nodes: filteredNodes,
     field: sortField,

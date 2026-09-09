@@ -176,6 +176,35 @@ describe("normalizeThemeSettings", () => {
     expect(normalizeThemeSettings({ homeSortField: "nope" } as never).homeSortField).toBe("default");
   });
 
+  it("支持保存离线与高负载排序，未指定方向时使用降序", () => {
+    for (const field of ["offline", "load"] as const) {
+      expect(normalizeThemeSettings({ homeSortField: field })).toMatchObject({
+        homeSortField: field,
+        homeSortDirection: "desc",
+      });
+      expect(normalizeThemeSettings({
+        homeSortField: field,
+        homeSortDirection: "asc",
+      }).homeSortDirection).toBe("asc");
+    }
+  });
+
+  it("访客资产访问与访客信息卡片分别保存，不影响现有入口开关", () => {
+    expect(normalizeThemeSettings({})).toMatchObject({
+      allowGuestCostSummary: true,
+      visitorInfoCardEnabled: true,
+    });
+    expect(normalizeThemeSettings({
+      allowGuestCostSummary: false,
+      visitorInfoCardEnabled: false,
+    })).toMatchObject({
+      allowGuestCostSummary: false,
+      visitorInfoCardEnabled: false,
+      showCostSummary: true,
+      showCostSummaryFloatingButton: true,
+    });
+  });
+
   it("keeps fake ping off unless explicitly enabled", () => {
     expect(normalizeThemeSettings({}).fakePingForUnbound).toBe(false);
     expect(normalizeThemeSettings({ fakePingForUnbound: true }).fakePingForUnbound).toBe(true);

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { BackgroundLayer } from "./BackgroundLayer";
@@ -6,9 +7,14 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useAppearance } from "@/hooks/useAppearance";
 import { useAuth } from "@/hooks/useAuth";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
+import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { useSiteMetadata } from "@/hooks/useSiteMetadata";
 import { useMetricColorsSync } from "@/hooks/useMetricColors";
 import { useNodeStoreStatus } from "@/hooks/useNode";
+
+const VisitorInfoCard = lazy(() =>
+  import("./VisitorInfoCard").then((module) => ({ default: module.VisitorInfoCard })),
+);
 
 export function AppShell() {
   useAppearance();
@@ -16,6 +22,7 @@ export function AppShell() {
   useMetricColorsSync();
   const { pathname, search } = useLocation();
   const publicConfig = usePublicConfig();
+  const themeSettings = useThemeSettings();
   const auth = useAuth();
   const normalizedPath = (pathname.replace(/\/+$/, "") || "/").toLowerCase();
   const isDataRoute =
@@ -41,11 +48,19 @@ export function AppShell() {
   const isCheckingHomeData =
     canHydrateHome && !homeStoreStatus.hydrated && !homeStoreStatus.nodeInfoError;
   const isCheckingShell = isCheckingAccess || isCheckingHomeData;
+  const showVisitorInfo =
+    isDataRoute &&
+    (normalizedPath !== "/" || isHomeDashboard) &&
+    !isCheckingShell &&
+    !accessError &&
+    !isPrivateVisitor &&
+    themeSettings.isReady &&
+    themeSettings.visitorInfoCardEnabled;
   return (
     <div className="relative flex min-h-screen flex-col">
       <BackgroundLayer />
       <AmbientEffectLayer />
-      <main className="app-main flex-1 px-3 pb-8 sm:px-5 md:px-6 lg:px-8">
+      <main className={`app-main flex-1 px-3 pb-8 sm:px-5 md:px-6 lg:px-8${showVisitorInfo ? " has-visitor-info" : ""}`}>
         <div className="mx-auto w-full max-w-[1720px]">
           {isCheckingShell ? (
             <div className="flex min-h-[60vh] items-center justify-center">
@@ -60,6 +75,11 @@ export function AppShell() {
           )}
         </div>
       </main>
+      {showVisitorInfo && (
+        <Suspense fallback={null}>
+          <VisitorInfoCard />
+        </Suspense>
+      )}
     </div>
   );
 }

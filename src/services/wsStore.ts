@@ -25,6 +25,7 @@ export interface HomeNodeSummary {
   hidden: boolean;
   weight: number;
   online: boolean | null;
+  cpuPct: number;
   trafficUp: number;
   trafficDown: number;
   netUp: number;
@@ -1092,6 +1093,7 @@ export function getHomeNodeSummariesSnapshot(): HomeNodeSummary[] {
         hidden: meta.hidden,
         weight: meta.weight,
         online: metrics?.online ?? null,
+        cpuPct: metrics?.cpuPct ?? 0,
         trafficUp: metrics?.trafficUp ?? 0,
         trafficDown: metrics?.trafficDown ?? 0,
         netUp: metrics?.netUp ?? 0,
@@ -1116,6 +1118,7 @@ export function getHomeNodeSummariesSnapshot(): HomeNodeSummary[] {
         prev.hidden === item.hidden &&
         prev.weight === item.weight &&
         prev.online === item.online &&
+        prev.cpuPct === item.cpuPct &&
         prev.trafficUp === item.trafficUp &&
         prev.trafficDown === item.trafficDown &&
         prev.netUp === item.netUp &&

@@ -478,6 +478,15 @@ export function installDevMockApi() {
     const request = new Request(input, init);
     const url = new URL(request.url, window.location.origin);
 
+    if (url.hostname === "api.ip.sb" && url.pathname === "/geoip") {
+      return json({
+        ip: "203.0.113.42",
+        isp: "示例网络",
+        country: "新加坡",
+        city: "Singapore",
+      });
+    }
+
     if (url.hostname === "api.frankfurter.dev") {
       return json([
         { base: "USD", quote: "CNY", rate: 7.18 },

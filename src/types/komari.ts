@@ -115,6 +115,7 @@ export interface ThemeSettings {
   mobileNodeViewMode?: "large" | "compact" | "mini" | "list";
   enableAdminButton?: boolean;
   hideAdminEntryWhenLoggedOut?: boolean;
+  visitorInfoCardEnabled?: boolean;
   showPingChart?: boolean;
   homepagePingBindings?: Record<string, string[]>;
   enableHomepageMultiPing?: boolean;
@@ -129,10 +130,11 @@ export interface ThemeSettings {
   showCardGroup?: boolean;
   homeGroupOrder?: string[];
   enableHomeSort?: boolean;
-  homeSortField?: "default" | "name" | "speed" | "traffic" | "price";
+  homeSortField?: "default" | "name" | "speed" | "traffic" | "price" | "offline" | "load";
   homeSortDirection?: "asc" | "desc";
   showCostSummary?: boolean;
   showCostSummaryFloatingButton?: boolean;
+  allowGuestCostSummary?: boolean;
   showOverviewOnline?: boolean;
   showOverviewBandwidth?: boolean;
   showOverviewTraffic?: boolean;

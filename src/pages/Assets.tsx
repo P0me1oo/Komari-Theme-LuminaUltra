@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Flag } from "@/components/ui/Flag";
 import { Spinner } from "@/components/ui/Spinner";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
+import { useAuth } from "@/hooks/useAuth";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useHourlyClock } from "@/hooks/useClock";
 import { useVisibleNodes } from "@/hooks/useVisibleNodes";
@@ -16,6 +17,7 @@ import {
   getExchangeRates,
 } from "@/utils/cost";
 import { formatBillingCycle } from "@/utils/billing";
+import { canAccessAssets } from "@/utils/assetsAccess";
 import { getExpireDaysRemaining, LONG_TERM_EXPIRE_DAYS } from "@/utils/format";
 import {
   getRenewalReminders,
@@ -116,6 +118,26 @@ function HeroMoney({ value }: { value: number | null }) {
 }
 
 export function Assets() {
+  const themeSettings = useThemeSettings();
+  const auth = useAuth();
+
+  if (!themeSettings.isReady || (!themeSettings.allowGuestCostSummary && auth.isPending)) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Spinner size={24} />
+      </div>
+    );
+  }
+
+  if (!canAccessAssets(themeSettings, auth.data?.logged_in === true)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <AssetsContent />;
+}
+
+// 通过入口规则后再挂载统计内容，避免被拒绝的访问触发汇率查询。
+function AssetsContent() {
   const [sortField, setSortField] = useState<AssetsSortField>("weight");
   const [sortDirection, setSortDirection] = useState<AssetsSortDirection>("asc");
   const isMobileLayout = useMediaQuery(ASSETS_MOBILE_QUERY);
@@ -184,19 +206,6 @@ export function Assets() {
       setSortDirection(NATURAL_DIRECTION[field]);
     }
   };
-
-  if (!themeSettings.isReady) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Spinner size={24} />
-      </div>
-    );
-  }
-
-  // 两个入口都关闭 = 站长不想暴露资产信息,直连 URL 一并回首页。
-  if (!themeSettings.showCostSummary && !themeSettings.showCostSummaryFloatingButton) {
-    return <Navigate to="/" replace />;
-  }
 
   const hasPremium = summary?.details.some((detail) => detail.premiumCny !== 0) ?? false;
   const ledgerRows: Array<{

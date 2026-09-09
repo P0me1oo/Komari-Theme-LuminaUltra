@@ -12,6 +12,7 @@ function node(partial: Partial<HomeNodeSummary> & Pick<HomeNodeSummary, "uuid">)
     hidden: false,
     region: "",
     online: true,
+    cpuPct: 0,
     trafficDown: 0,
     trafficUp: 0,
     netDown: 0,

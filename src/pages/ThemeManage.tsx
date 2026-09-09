@@ -89,7 +89,7 @@ import {
   getDefaultOverviewRatingLabelText,
   type OverviewRatingKind,
 } from "@/utils/overviewRating";
-import { HOME_SORT_FIELDS, HOME_SORT_FIELD_LABELS } from "@/utils/homeSort";
+import { HOME_SORT_FIELDS, HOME_SORT_FIELD_LABELS, HOME_SORT_NATURAL_DIRECTION } from "@/utils/homeSort";
 
 const APPEARANCE_OPTIONS = [
   { value: "light", label: "浅色", icon: Sun },
@@ -292,6 +292,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     desktopNodeViewMode: settings.desktopNodeViewMode,
     mobileNodeViewMode: settings.mobileNodeViewMode,
     hideAdminEntryWhenLoggedOut: settings.hideAdminEntryWhenLoggedOut,
+    visitorInfoCardEnabled: settings.visitorInfoCardEnabled,
     homepagePingBindings: settings.homepagePingBindings,
     enableHomepageMultiPing: settings.enableHomepageMultiPing,
     homepageMultiPingTaskIds: settings.homepageMultiPingTaskIds,
@@ -309,6 +310,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     homeSortDirection: settings.homeSortDirection,
     showCostSummary: settings.showCostSummary,
     showCostSummaryFloatingButton: settings.showCostSummaryFloatingButton,
+    allowGuestCostSummary: settings.allowGuestCostSummary,
     showOverviewOnline: settings.showOverviewOnline,
     showOverviewBandwidth: settings.showOverviewBandwidth,
     showOverviewTraffic: settings.showOverviewTraffic,
@@ -1783,7 +1785,7 @@ export function ThemeManage() {
           <ToggleRow
             field="enableHomeSort"
             title="启用排序切换"
-            desc="首页显示排序控件，访客可临时切换排序方式（离线节点恒定置底）。"
+            desc="访客可临时切换排序；高负载按 CPU 使用率排列，离线优先可将离线节点前置。"
             checked={draft.enableHomeSort}
             onPatch={patch}
           />
@@ -1792,6 +1794,13 @@ export function ThemeManage() {
             title="未登录时隐藏后台入口"
             desc="仅隐藏访客看到的“后台登录”；/admin 仍可直接访问，登录后自动显示“管理”。"
             checked={draft.hideAdminEntryWhenLoggedOut}
+            onPatch={patch}
+          />
+          <ToggleRow
+            field="visitorInfoCardEnabled"
+            title="显示访客信息卡片"
+            desc="在页面底部显示来源、IP 和浏览器，展开可查看设备、运营商和访问时间。"
+            checked={draft.visitorInfoCardEnabled}
             onPatch={patch}
           />
         </div>
@@ -1812,7 +1821,11 @@ export function ThemeManage() {
                   data-active={draft.homeSortField === field ? "true" : "false"}
                   aria-pressed={draft.homeSortField === field}
                   disabled={!draft.enableHomeSort}
-                  onClick={() => patch("homeSortField", field)}
+                  onClick={() => {
+                    if (draft.homeSortField === field) return;
+                    patch("homeSortField", field);
+                    patch("homeSortDirection", HOME_SORT_NATURAL_DIRECTION[field]);
+                  }}
                 >
                   {HOME_SORT_FIELD_LABELS[field]}
                 </button>
@@ -2120,6 +2133,13 @@ export function ThemeManage() {
               title="显示资产悬浮按钮"
               desc="卡内入口不可用时（总览隐藏或其开关关闭），以悬浮按钮进入资产统计页。"
               checked={draft.showCostSummaryFloatingButton}
+              onPatch={patch}
+            />
+            <ToggleRow
+              field="allowGuestCostSummary"
+              title="向访客开放资产统计"
+              desc="关闭后，未登录访客看不到资产入口，直接访问资产页也会返回首页；登录后可查看。"
+              checked={draft.allowGuestCostSummary}
               onPatch={patch}
             />
             <label className="flex flex-col gap-2">

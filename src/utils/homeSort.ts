@@ -1,8 +1,8 @@
 import type { HomeNodeSummary } from "@/services/wsStore";
 
-// 首页临时排序；默认使用后端 weight，离线节点始终沉底。
+// 首页临时排序；默认使用后端 weight，仅「离线优先」允许离线节点前置。
 
-export type HomeSortField = "default" | "name" | "speed" | "traffic" | "price";
+export type HomeSortField = "default" | "name" | "speed" | "traffic" | "price" | "offline" | "load";
 export type HomeSortDirection = "asc" | "desc";
 
 export const HOME_SORT_FIELDS: readonly HomeSortField[] = [
@@ -11,6 +11,8 @@ export const HOME_SORT_FIELDS: readonly HomeSortField[] = [
   "speed",
   "traffic",
   "price",
+  "offline",
+  "load",
 ];
 
 export const HOME_SORT_FIELD_LABELS: Record<HomeSortField, string> = {
@@ -19,6 +21,8 @@ export const HOME_SORT_FIELD_LABELS: Record<HomeSortField, string> = {
   speed: "实时网速",
   traffic: "累计流量",
   price: "价格",
+  offline: "离线优先",
+  load: "高负载",
 };
 
 // 每个维度的自然默认方向:文本升序(A→Z),数值降序(高的在前)。
@@ -28,6 +32,8 @@ export const HOME_SORT_NATURAL_DIRECTION: Record<HomeSortField, HomeSortDirectio
   speed: "desc",
   traffic: "desc",
   price: "desc",
+  offline: "desc",
+  load: "desc",
 };
 
 export function isHomeSortField(value: unknown): value is HomeSortField {
@@ -57,7 +63,12 @@ export interface HomeSortContext {
 
 // 0=参与排序，1=无有效排序值，2=离线；后两段按 weight 排列。
 function segmentOf(node: HomeNodeSummary, field: HomeSortField, ctx: HomeSortContext): 0 | 1 | 2 {
+  // 在线状态尚未确定时，不把节点当作离线；已知状态始终优先。
+  if (field === "offline") return node.online === null ? 1 : 0;
   if (node.online === false) return 2;
+  if (field === "load") {
+    return node.online === true && Number.isFinite(node.cpuPct) && node.cpuPct >= 0 ? 0 : 1;
+  }
   if (field === "speed") return ctx.speedActive.has(node.uuid) ? 0 : 1;
   if (field === "price") return ctx.priceByUuid.get(node.uuid) != null ? 0 : 1;
   return 0;
@@ -77,6 +88,10 @@ function primaryValue(
       return (node.trafficUp || 0) + (node.trafficDown || 0);
     case "price":
       return ctx.priceByUuid.get(node.uuid) ?? 0;
+    case "offline":
+      return node.online === false ? 1 : 0;
+    case "load":
+      return node.cpuPct;
     case "default":
     default:
       return node.weight;

@@ -58,6 +58,7 @@ export interface ResolvedThemeSettings {
   mobileNodeViewMode: NodeViewMode;
   enableAdminButton: boolean;
   hideAdminEntryWhenLoggedOut: boolean;
+  visitorInfoCardEnabled: boolean;
   showPingChart: boolean;
   homepagePingBindings: HomepagePingTaskBindings;
   enableHomepageMultiPing: boolean;
@@ -76,6 +77,7 @@ export interface ResolvedThemeSettings {
   homeSortDirection: HomeSortDirection;
   showCostSummary: boolean;
   showCostSummaryFloatingButton: boolean;
+  allowGuestCostSummary: boolean;
   showOverviewOnline: boolean;
   showOverviewBandwidth: boolean;
   showOverviewTraffic: boolean;
@@ -117,6 +119,7 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   mobileNodeViewMode: "compact",
   enableAdminButton: true,
   hideAdminEntryWhenLoggedOut: false,
+  visitorInfoCardEnabled: true,
   showPingChart: true,
   homepagePingBindings: {},
   enableHomepageMultiPing: false,
@@ -135,6 +138,7 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   homeSortDirection: HOME_SORT_NATURAL_DIRECTION.default,
   showCostSummary: true,
   showCostSummaryFloatingButton: true,
+  allowGuestCostSummary: true,
   showOverviewOnline: true,
   showOverviewBandwidth: true,
   showOverviewTraffic: true,
@@ -282,6 +286,7 @@ export function normalizeThemeSettings(
     enableAdminButton: enabledUnlessFalse(settings?.enableAdminButton),
     hideAdminEntryWhenLoggedOut:
       settings?.hideAdminEntryWhenLoggedOut === true,
+    visitorInfoCardEnabled: enabledUnlessFalse(settings?.visitorInfoCardEnabled),
     showPingChart: enabledUnlessFalse(settings?.showPingChart),
     homepagePingBindings: normalizeHomepagePingTaskBindings(settings?.homepagePingBindings),
     // 保留开关原值，让管理页能呈现并修复不完整配置；首页消费方仅在任务恰好为三项时启用。
@@ -305,6 +310,7 @@ export function normalizeThemeSettings(
     ...normalizeHomeSortDefault(settings?.homeSortField, settings?.homeSortDirection),
     showCostSummary: enabledUnlessFalse(settings?.showCostSummary),
     showCostSummaryFloatingButton: enabledUnlessFalse(settings?.showCostSummaryFloatingButton),
+    allowGuestCostSummary: enabledUnlessFalse(settings?.allowGuestCostSummary),
     showOverviewOnline: enabledUnlessFalse(settings?.showOverviewOnline),
     showOverviewBandwidth: enabledUnlessFalse(settings?.showOverviewBandwidth),
     showOverviewTraffic: enabledUnlessFalse(settings?.showOverviewTraffic),

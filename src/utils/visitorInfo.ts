@@ -2,12 +2,12 @@ import { z } from "zod";
 
 const ipSchema = z.string().ip();
 
-/** 折叠时遮住 IPv4 第三段或 IPv6 后半段；占位文字保持原样。 */
+/** 折叠时遮住 IPv4 最后一段或 IPv6 后半段；占位文字保持原样。 */
 export function maskVisitorIp(value: string): string {
   if (!ipSchema.safeParse(value).success) return value;
   if (!value.includes(":")) {
     const segments = value.split(".");
-    segments[2] = "*".repeat(segments[2].length);
+    segments[3] = "*";
     return segments.join(".");
   }
 

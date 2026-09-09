@@ -1785,7 +1785,7 @@ export function ThemeManage() {
           <ToggleRow
             field="enableHomeSort"
             title="启用排序切换"
-            desc="访客可临时切换排序；高负载按 CPU 使用率排列，离线优先可将离线节点前置。"
+            desc="访客可临时切换排序；高负载按 CPU 使用率排列，离线排序默认将离线节点前置。"
             checked={draft.enableHomeSort}
             onPatch={patch}
           />
@@ -1799,7 +1799,7 @@ export function ThemeManage() {
           <ToggleRow
             field="visitorInfoCardEnabled"
             title="显示访客信息卡片"
-            desc="在页面底部显示来源、IP 和浏览器，展开可查看设备、运营商和访问时间。"
+            desc="控制页面底部信息卡片的显示；点击卡片展开，再次点击收起。"
             checked={draft.visitorInfoCardEnabled}
             onPatch={patch}
           />

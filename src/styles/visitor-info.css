@@ -1,8 +1,8 @@
-/* 访客卡片沿用主题表面、字体与蓝色强调色，折叠为底部信息条。 */
+/* 底部信息条与节点卡片共用表面透明度，整张卡片点击切换。 */
 .visitor-info-dock {
   position: fixed;
   inset-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
-  bottom: max(14px, env(safe-area-inset-bottom));
+  bottom: max(10px, env(safe-area-inset-bottom));
   z-index: 40;
   display: flex;
   justify-content: center;
@@ -11,43 +11,47 @@
 
 .visitor-info-card {
   width: fit-content;
-  max-width: min(640px, 100%);
-  border: 1px solid var(--border-strong);
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-  box-shadow: 0 6px 24px -12px rgb(0 0 0 / 28%);
+  max-width: min(400px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-a);
+  box-shadow: 0 4px 16px -10px rgb(0 0 0 / 24%);
   color: var(--text-secondary);
   pointer-events: auto;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  transition: border-radius 160ms ease, background 160ms ease;
+  transition: background 160ms ease;
 }
 
 .visitor-info-card[data-expanded="true"] {
-  width: min(640px, 100%);
-  border-radius: 18px;
+  width: min(400px, 100%);
 }
 
 .visitor-info-trigger {
-  display: flex;
+  display: block;
   width: 100%;
-  min-height: 44px;
-  align-items: center;
-  gap: 12px;
-  padding: 7px 14px 7px 9px;
+  min-height: 30px;
+  max-height: calc(100dvh - 80px - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 10px;
   border-radius: inherit;
   text-align: left;
   font-size: 12px;
   line-height: 1.5;
 }
 
-.visitor-info-kind {
-  flex-shrink: 0;
-  padding: 3px 8px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--accent-500) 10%, transparent);
-  color: var(--accent-500);
-  font-weight: 650;
+.visitor-info-trigger:focus-visible {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 3px;
+}
+
+.visitor-info-card[data-expanded="true"] .visitor-info-trigger {
+  padding: 10px 12px;
+}
+
+.visitor-info-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .visitor-info-location {
@@ -60,59 +64,41 @@
 }
 
 .visitor-info-ip,
-.visitor-info-browser,
-.visitor-info-action {
+.visitor-info-browser {
   flex-shrink: 0;
   white-space: nowrap;
 }
 
 .visitor-info-ip {
-  max-width: 16rem;
+  max-width: 14rem;
   overflow: hidden;
   font-family: var(--font-mono);
   text-overflow: ellipsis;
 }
 
-.visitor-info-action {
-  margin-left: auto;
-  color: var(--text-tertiary);
-}
-
-.visitor-info-trigger:hover .visitor-info-action {
-  color: var(--accent-500);
-}
-
-.visitor-info-details {
-  max-height: calc(100dvh - 100px - env(safe-area-inset-bottom));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 4px 16px 16px;
-  animation: visitor-info-reveal 160ms ease;
-}
-
 .visitor-info-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 14px 24px;
-  margin: 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--hairline);
+  gap: 6px 14px;
+  animation: visitor-info-reveal 160ms ease;
 }
 
 .visitor-info-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: 6px;
   min-width: 0;
 }
 
-.visitor-info-row dt {
-  margin-bottom: 4px;
+.visitor-info-label {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: 11px;
 }
 
-.visitor-info-row dd {
-  margin: 0;
+.visitor-info-value {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -123,7 +109,7 @@
 }
 
 .visitor-info-retry {
-  margin-top: 14px;
+  margin: 0 12px 10px;
   color: var(--accent-500);
   font-size: 12px;
 }
@@ -134,7 +120,7 @@
 }
 
 .app-main.has-visitor-info {
-  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
 
 @keyframes visitor-info-reveal {
@@ -152,27 +138,16 @@
   .visitor-info-browser {
     display: none;
   }
-
-  .visitor-info-grid {
-    gap: 12px 16px;
-  }
 }
 
 @media (max-width: 460px) {
   .visitor-info-grid {
     grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+    gap: 6px;
   }
 
   .visitor-info-row {
-    display: grid;
     grid-template-columns: 4.5em minmax(0, 1fr);
-    gap: 12px;
-    align-items: baseline;
-  }
-
-  .visitor-info-row dt {
-    margin: 0;
   }
 }
 
@@ -181,7 +156,7 @@
     transition: none;
   }
 
-  .visitor-info-details {
+  .visitor-info-grid {
     animation: none;
   }
 }

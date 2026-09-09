@@ -43,8 +43,8 @@ export function VisitorInfoCard() {
   const isp = data?.isp ?? (isFetching ? "获取中" : "暂无法获取");
   const rows = [
     { label: "来源", value: location },
-    { label: "IP", value: ip, numeric: true },
     { label: "设备", value: client.device },
+    { label: "IP", value: ip, numeric: true },
     { label: "浏览器", value: client.browser },
     { label: "运营商", value: isp },
     { label: "访问时间", value: visitTime, numeric: true },
@@ -55,7 +55,7 @@ export function VisitorInfoCard() {
       <section
         className="visitor-info-card"
         data-expanded={expanded}
-        aria-label="访客信息"
+        aria-label="来源与网络信息"
         ref={rootRef}
       >
         <button
@@ -64,36 +64,38 @@ export function VisitorInfoCard() {
           ref={triggerRef}
           aria-expanded={expanded}
           aria-controls={expanded ? detailsId : undefined}
-          aria-label={`${expanded ? "收起" : "展开"}访客信息`}
+          aria-describedby={detailsId}
+          aria-label={`${expanded ? "收起" : "展开"}来源与网络信息`}
           onClick={() => setExpanded((value) => !value)}
         >
-          <span className="visitor-info-kind">访客</span>
-          <span className="visitor-info-location" title={location} aria-live="polite">{location}</span>
-          <span className="visitor-info-ip">{maskVisitorIp(ip)}</span>
-          <span className="visitor-info-browser">{client.browser}</span>
-          <span className="visitor-info-action">{expanded ? "收起" : "展开"}</span>
-        </button>
-        {expanded && (
-          <div id={detailsId} className="visitor-info-details">
-            <dl className="visitor-info-grid">
+          {expanded ? (
+            <span id={detailsId} className="visitor-info-grid">
               {rows.map((row) => (
-                <div className="visitor-info-row" key={row.label}>
-                  <dt>{row.label}</dt>
-                  <dd className={row.numeric ? "visitor-info-numeric" : undefined}>{row.value}</dd>
-                </div>
+                <span className="visitor-info-row" key={row.label}>
+                  <span className="visitor-info-label">{row.label}</span>
+                  <span className={`visitor-info-value${row.numeric ? " visitor-info-numeric" : ""}`}>
+                    {row.value}
+                  </span>
+                </span>
               ))}
-            </dl>
-            {!data && (
-              <button
-                type="button"
-                className="visitor-info-retry"
-                disabled={isFetching}
-                onClick={() => void refetch()}
-              >
-                {isFetching ? "正在获取网络信息" : "重新获取网络信息"}
-              </button>
-            )}
-          </div>
+            </span>
+          ) : (
+            <span id={detailsId} className="visitor-info-summary">
+              <span className="visitor-info-location" title={location} aria-live="polite">{location}</span>
+              <span className="visitor-info-ip">{maskVisitorIp(ip)}</span>
+              <span className="visitor-info-browser">{client.browser}</span>
+            </span>
+          )}
+        </button>
+        {expanded && !data && (
+          <button
+            type="button"
+            className="visitor-info-retry"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching ? "正在获取网络信息" : "重新获取网络信息"}
+          </button>
         )}
       </section>
     </div>

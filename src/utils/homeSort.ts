@@ -1,6 +1,6 @@
 import type { HomeNodeSummary } from "@/services/wsStore";
 
-// 首页临时排序；默认使用后端 weight，仅「离线优先」允许离线节点前置。
+// 首页临时排序；默认使用后端 weight，仅「离线」排序允许离线节点前置。
 
 export type HomeSortField = "default" | "name" | "speed" | "traffic" | "price" | "offline" | "load";
 export type HomeSortDirection = "asc" | "desc";
@@ -21,7 +21,7 @@ export const HOME_SORT_FIELD_LABELS: Record<HomeSortField, string> = {
   speed: "实时网速",
   traffic: "累计流量",
   price: "价格",
-  offline: "离线优先",
+  offline: "离线",
   load: "高负载",
 };
 

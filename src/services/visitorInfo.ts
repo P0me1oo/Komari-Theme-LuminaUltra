@@ -46,11 +46,34 @@ const ipApiSchema = z.object({
   }).optional().catch(undefined),
 });
 
-function geoInfo(ip: string, isp: string, country = "", city = "", countryCode = ""): VisitorGeoInfo {
+const CHINA_REGIONS = [
+  { code: "HK", label: "China Hongkong", names: ["hongkong", "香港", "中国香港", "中國香港"] },
+  { code: "TW", label: "China Taiwan", names: ["taiwan", "台湾", "臺灣", "台灣", "中国台湾", "中國臺灣", "中國台灣"] },
+  { code: "MO", label: "China Macau", names: ["macau", "macao", "澳门", "澳門", "中国澳门", "中國澳門"] },
+];
+
+function normalizeLocationName(value: string): string {
+  return value.replace(/\s+/g, "").toLowerCase();
+}
+
+function geoInfo(ip: string, isp: string, country = "", city = "", countryCode = "", region = ""): VisitorGeoInfo {
+  // 三个来源统一显示港澳台；代码缺失或仅返回 CN 时，再按完整地区名识别。
+  const names = [country, region, city].map(normalizeLocationName);
+  const chinaRegion = CHINA_REGIONS.find((entry) => entry.code === countryCode) ?? (
+    !countryCode || countryCode === "CN"
+      ? CHINA_REGIONS.find((entry) => entry.names.some((name) => names.includes(name)))
+      : undefined
+  );
+  const locationParts = [country, city || region].filter(Boolean).filter(
+    (part, index, parts) => parts.findIndex(
+      (candidate) => normalizeLocationName(candidate) === normalizeLocationName(part),
+    ) === index,
+  );
+
   return {
     ip,
     isp: isp || "未知运营商",
-    location: [country, city].filter(Boolean).join(" · ") || "未知位置",
+    location: chinaRegion?.label ?? (locationParts.join(" · ") || "未知位置"),
     countryCode,
   };
 }
@@ -65,8 +88,9 @@ const SOURCES: Array<{ url: string; parse: (value: unknown) => VisitorGeoInfo }>
         data.ip,
         data.isp || data.organization || data.asn_organization,
         data.country,
-        data.city || data.region,
+        data.city,
         data.country_code,
+        data.region,
       );
     },
   },
@@ -78,8 +102,9 @@ const SOURCES: Array<{ url: string; parse: (value: unknown) => VisitorGeoInfo }>
         data.ip,
         data.connection?.isp || data.connection?.org || "",
         data.country,
-        data.city || data.region,
+        data.city,
         data.country_code,
+        data.region,
       );
     },
   },
@@ -91,8 +116,9 @@ const SOURCES: Array<{ url: string; parse: (value: unknown) => VisitorGeoInfo }>
         data.ip,
         data.asn?.org || data.company?.name || data.asn?.descr || "",
         data.location?.country,
-        data.location?.city || data.location?.state,
+        data.location?.city,
         data.location?.country_code || data.asn?.country || data.datacenter?.country,
+        data.location?.state,
       );
     },
   },

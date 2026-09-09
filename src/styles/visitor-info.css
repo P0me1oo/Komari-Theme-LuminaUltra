@@ -201,21 +201,9 @@
 }
 
 @media (max-width: 720px) {
-  /* 右侧为资产悬浮按钮留出位置，底部信息条不盖住入口。 */
-  .visitor-info-dock {
-    inset-inline-end: max(64px, calc(env(safe-area-inset-right) + 52px));
-  }
-
   .visitor-info-ip .visitor-info-summary-value,
   .visitor-info-browser .visitor-info-summary-value {
     display: none;
-  }
-}
-
-@media (max-width: 460px) {
-  .visitor-info-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
   }
 }
 

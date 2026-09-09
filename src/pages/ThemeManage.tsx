@@ -2130,8 +2130,8 @@ export function ThemeManage() {
             />
             <ToggleRow
               field="showCostSummaryFloatingButton"
-              title="显示资产悬浮按钮"
-              desc="卡内入口不可用时（总览隐藏或其开关关闭），以悬浮按钮进入资产统计页。"
+              title="显示资产快捷入口"
+              desc="在首页顶部的快捷栏中显示资产统计入口，与主题设置并列。"
               checked={draft.showCostSummaryFloatingButton}
               onPatch={patch}
             />

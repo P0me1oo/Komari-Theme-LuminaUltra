@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleDollarSign, HardDrive, MemoryStick } from "lucide-react";
+import { HardDrive, MemoryStick } from "lucide-react";
 import { Flag } from "@/components/ui/Flag";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -562,19 +562,13 @@ export function NodeGrid() {
     themeSettings.showOverviewDisk;
   const showTrafficPopover = themeSettings.isReady && themeSettings.showTodayTrafficPopover;
   const hasNodes = visibleMeta.length > 0;
-  // 卡内入口与悬浮入口互斥，避免重复操作入口。
   const showAssetCard = showHomeOverview && themeSettings.showOverviewAsset && hasNodes;
   const assetsAllowed = themeSettings.isReady && canAccessAssets(themeSettings, me?.logged_in === true);
   const showCostDetailButton =
     showAssetCard && assetsAllowed && themeSettings.showCostSummary;
-  const showCostFloatingButton =
-    assetsAllowed &&
-    themeSettings.showCostSummaryFloatingButton &&
-    hasNodes &&
-    !showCostDetailButton;
 
   useEffect(() => {
-    if (!showCostDetailButton && !showCostFloatingButton) return;
+    if (!showCostDetailButton) return;
 
     const idleWindow = window as IdleCapableWindow;
     if (idleWindow.requestIdleCallback) {
@@ -585,10 +579,10 @@ export function NodeGrid() {
     // Safari 等无 requestIdleCallback 的浏览器，在首页稳定后再低优先级预取。
     const handle = window.setTimeout(preloadAssetsPage, 1_000);
     return () => window.clearTimeout(handle);
-  }, [showCostDetailButton, showCostFloatingButton]);
+  }, [showCostDetailButton]);
 
-  // 资产入口存在时预热汇率，供概览、价格排序和资产页复用。
-  const costNeeded = showAssetCard || showCostFloatingButton;
+  // 资产概览所需汇率由价格排序和资产页复用。
+  const costNeeded = showAssetCard;
   const rateQuery = useQuery({
     queryKey: ["cost-rates", themeSettings.costRateApiUrl],
     queryFn: ({ signal }) => getExchangeRates(themeSettings.costRateApiUrl, { signal }),
@@ -767,21 +761,9 @@ export function NodeGrid() {
     );
   }
 
-  // 资产页悬浮入口 + 首页概览卡在「空节点」与正常两个分支里完全一致，提取一次复用。
+  // 首页标题和概览卡在「空节点」与正常两个分支里一致，提取一次复用。
   const homeHeader = (
     <>
-      {showCostFloatingButton && (
-        <Link
-          to="/assets"
-          className="cost-summary-ball show"
-          aria-label="打开资产统计页"
-          title="资产统计"
-        >
-          <span className="cost-summary-ball-icon" aria-hidden>
-            <CircleDollarSign size={16} />
-          </span>
-        </Link>
-      )}
       <HomeBrand siteName={siteName} />
       {showHomeOverview && showAnyOverviewCard && (
         <HomeOverviewCards

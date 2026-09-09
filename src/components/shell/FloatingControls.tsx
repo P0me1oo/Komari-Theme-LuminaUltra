@@ -1,11 +1,13 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, Grid3x3, LayoutGrid, List, Monitor, Palette, Rows3, Settings, SlidersHorizontal, Sun, Moon } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, CircleDollarSign, Grid3x3, LayoutGrid, List, Monitor, Palette, Rows3, Settings, SlidersHorizontal, Sun, Moon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useViewMode } from "@/hooks/useViewMode";
 import { useNodeStoreStatus } from "@/hooks/useNode";
 import { useAuth } from "@/hooks/useAuth";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
+import { preloadAssetsPage } from "@/services/assetsPageLoader";
+import { canAccessAssets } from "@/utils/assetsAccess";
 import {
   shouldShowAdminEntry,
   type NodeViewMode,
@@ -50,6 +52,10 @@ export function FloatingControls({
   const showAdmin =
     settingsReady && shouldShowAdminEntry(themeSettings, loggedIn);
   const showThemeManage = loggedIn;
+  const showAssets =
+    settingsReady &&
+    themeSettings.showCostSummaryFloatingButton &&
+    canAccessAssets(themeSettings, loggedIn);
   const showColorPicker = loggedIn;
   const showSyncWarning = failureStreak >= 2;
   const hiddenTabIndex = collapsed ? -1 : undefined;
@@ -141,27 +147,44 @@ export function FloatingControls({
                 )}
               </>
             )}
-            {showThemeManage && (
-              <Link
-                to="/?view=theme-manage"
-                aria-label="主题设置"
-                title="主题设置"
-                tabIndex={hiddenTabIndex}
-                className="control-button grid h-9 w-9 place-items-center"
-              >
-                <SlidersHorizontal size={16} />
-              </Link>
-            )}
-            {showAdmin && (
-              <a
-                href="/admin"
-                aria-label={me?.logged_in ? "管理" : "后台登录"}
-                title={me?.logged_in ? "管理" : "后台登录"}
-                tabIndex={hiddenTabIndex}
-                className="control-button grid h-9 w-9 place-items-center"
-              >
-                <Settings size={16} />
-              </a>
+            {(showAssets || showThemeManage || showAdmin) && (
+              <div className="floating-controls-navigation" role="group" aria-label="页面入口">
+                {showAssets && (
+                  <Link
+                    to="/assets"
+                    aria-label="打开资产统计页"
+                    title="资产统计"
+                    tabIndex={hiddenTabIndex}
+                    className="control-button grid h-9 w-9 place-items-center"
+                    onPointerEnter={preloadAssetsPage}
+                    onFocus={preloadAssetsPage}
+                  >
+                    <CircleDollarSign size={16} />
+                  </Link>
+                )}
+                {showThemeManage && (
+                  <Link
+                    to="/?view=theme-manage"
+                    aria-label="主题设置"
+                    title="主题设置"
+                    tabIndex={hiddenTabIndex}
+                    className="control-button grid h-9 w-9 place-items-center"
+                  >
+                    <SlidersHorizontal size={16} />
+                  </Link>
+                )}
+                {showAdmin && (
+                  <a
+                    href="/admin"
+                    aria-label={me?.logged_in ? "管理" : "后台登录"}
+                    title={me?.logged_in ? "管理" : "后台登录"}
+                    tabIndex={hiddenTabIndex}
+                    className="control-button grid h-9 w-9 place-items-center"
+                  >
+                    <Settings size={16} />
+                  </a>
+                )}
+              </div>
             )}
           </div>
           <button

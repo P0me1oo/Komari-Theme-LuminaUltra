@@ -44,6 +44,10 @@
   transform: translateY(-6px);
 }
 
+.home-dashboard.is-home-header-hidden .floating-controls {
+  position: absolute;
+}
+
 @media (max-width: 720px) {
   .home-brand {
     max-width: calc(100vw - 8.5rem);

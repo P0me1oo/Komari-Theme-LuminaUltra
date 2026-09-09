@@ -70,6 +70,42 @@ describe("访客网络信息查询", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  describe.each(["ip.sb", "ipwho.is", "ipapi.is"])("%s 地区显示", (source) => {
+    it.each([
+      ["HK", "Hongkong", "Hongkong", "China Hongkong"],
+      ["TW", "Taiwan", "Taipei", "China Taiwan"],
+      ["MO", "Macao", "Macau", "China Macau"],
+    ])("将 %s 统一显示为中国下的地区", async (code, country, city, expected) => {
+      const fetchMock = vi.fn();
+      if (source !== "ip.sb") fetchMock.mockResolvedValueOnce(json({}, 503));
+      if (source === "ipapi.is") fetchMock.mockResolvedValueOnce(json({ success: false, ip: "192.0.2.1" }));
+      const fields = { country_code: code, country, city };
+      fetchMock.mockResolvedValueOnce(json({
+        ip: "203.0.113.42",
+        ...(source === "ipapi.is" ? { location: fields } : fields),
+      }));
+      vi.stubGlobal("fetch", fetchMock);
+      await expect(getVisitorGeoInfo()).resolves.toMatchObject({
+        location: expected,
+        countryCode: code,
+      });
+    });
+  });
+
+  it.each([
+    [{ country: "Hong Kong", city: "Hongkong" }, "China Hongkong"],
+    [{ country: "香港", region: "香港" }, "China Hongkong"],
+    [{ country: "China", country_code: "CN", region: "Taiwan", city: "Taipei" }, "China Taiwan"],
+    [{ country: "中国", country_code: "CN", region: "臺灣", city: "台北" }, "China Taiwan"],
+    [{ country: "Macao", city: "Macau" }, "China Macau"],
+    [{ country: "中國澳門" }, "China Macau"],
+    [{ country: "Singapore", city: "singapore" }, "Singapore"],
+    [{ country: "United States", country_code: "US", city: "Hong Kong" }, "United States · Hong Kong"],
+  ])("兼容缺失代码、中文地区名和重复位置：%j", async (fields, expected) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ ip: "203.0.113.42", ...fields })));
+    await expect(getVisitorGeoInfo()).resolves.toMatchObject({ location: expected });
+  });
+
   it.each([
     [" sg ", "SG"],
     ["uS", "US"],

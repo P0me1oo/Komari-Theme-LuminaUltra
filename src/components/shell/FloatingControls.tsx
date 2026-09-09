@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react";
 import { AlertTriangle, ChevronLeft, ChevronRight, CircleDollarSign, Grid3x3, LayoutGrid, List, Monitor, Palette, Rows3, Settings, SlidersHorizontal, Sun, Moon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePreferences } from "@/hooks/usePreferences";
@@ -57,6 +57,10 @@ export function FloatingControls({
     themeSettings.showCostSummaryFloatingButton &&
     canAccessAssets(themeSettings, loggedIn);
   const showColorPicker = loggedIn;
+  // 包含收起箭头，按实际按钮数量分配单行宽度。
+  const controlCount = 1 +
+    (settingsReady ? APPEARANCE_OPTIONS.length + 1 + Number(showColorPicker) : 0) +
+    Number(showAssets) + Number(showThemeManage) + Number(showAdmin);
   const showSyncWarning = failureStreak >= 2;
   const hiddenTabIndex = collapsed ? -1 : undefined;
   const ToggleIcon = collapsed ? ChevronLeft : ChevronRight;
@@ -83,6 +87,7 @@ export function FloatingControls({
         collapsed && "is-collapsed",
         showSyncWarning && "has-warning",
       )}
+      style={{ "--floating-control-count": controlCount } as CSSProperties}
     >
       <div className="floating-controls-inner">
         <div className="floating-controls-row">

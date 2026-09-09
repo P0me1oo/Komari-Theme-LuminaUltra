@@ -483,6 +483,7 @@ export function installDevMockApi() {
         ip: "203.0.113.42",
         isp: "示例网络",
         country: "新加坡",
+        country_code: "SG",
         city: "Singapore",
       });
     }

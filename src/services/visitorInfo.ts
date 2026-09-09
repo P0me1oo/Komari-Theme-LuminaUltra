@@ -5,12 +5,15 @@ export interface VisitorGeoInfo {
   ip: string;
   isp: string;
   location: string;
+  countryCode: string;
 }
 
 const textField = z.string().trim().catch("");
 const ipField = z.string().trim().ip();
+const countryCodeField = z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/).catch("");
 const geoFields = {
   country: textField,
+  country_code: countryCodeField,
   region: textField,
   city: textField,
 };
@@ -33,19 +36,22 @@ const ipWhoSchema = z.object({
 const ipApiSchema = z.object({
   ip: ipField,
   company: z.object({ name: textField }).optional().catch(undefined),
-  asn: z.object({ org: textField, descr: textField }).optional().catch(undefined),
+  asn: z.object({ org: textField, descr: textField, country: countryCodeField }).optional().catch(undefined),
+  datacenter: z.object({ country: countryCodeField }).optional().catch(undefined),
   location: z.object({
     country: textField,
+    country_code: countryCodeField,
     state: textField,
     city: textField,
   }).optional().catch(undefined),
 });
 
-function geoInfo(ip: string, isp: string, country = "", city = ""): VisitorGeoInfo {
+function geoInfo(ip: string, isp: string, country = "", city = "", countryCode = ""): VisitorGeoInfo {
   return {
     ip,
     isp: isp || "未知运营商",
     location: [country, city].filter(Boolean).join(" · ") || "未知位置",
+    countryCode,
   };
 }
 
@@ -60,6 +66,7 @@ const SOURCES: Array<{ url: string; parse: (value: unknown) => VisitorGeoInfo }>
         data.isp || data.organization || data.asn_organization,
         data.country,
         data.city || data.region,
+        data.country_code,
       );
     },
   },
@@ -72,6 +79,7 @@ const SOURCES: Array<{ url: string; parse: (value: unknown) => VisitorGeoInfo }>
         data.connection?.isp || data.connection?.org || "",
         data.country,
         data.city || data.region,
+        data.country_code,
       );
     },
   },
@@ -84,6 +92,7 @@ const SOURCES: Array<{ url: string; parse: (value: unknown) => VisitorGeoInfo }>
         data.asn?.org || data.company?.name || data.asn?.descr || "",
         data.location?.country,
         data.location?.city || data.location?.state,
+        data.location?.country_code || data.asn?.country || data.datacenter?.country,
       );
     },
   },

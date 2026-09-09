@@ -24,6 +24,7 @@
   color: var(--text-secondary);
   pointer-events: auto;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   font-size: 12px;
   line-height: 1.5;
   transition: width 240ms linear, height 240ms linear, background 240ms linear;
@@ -38,8 +39,14 @@
   border-radius: inherit;
 }
 
-.visitor-info-trigger:focus-visible {
-  outline: 2px solid var(--accent-500);
+.visitor-info-trigger:focus:not(:focus-visible),
+.visitor-info-retry:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.visitor-info-trigger:focus-visible,
+.visitor-info-retry:focus-visible {
+  outline: 2px solid var(--text-tertiary);
   outline-offset: 3px;
 }
 
@@ -87,26 +94,64 @@
   padding: 10px 12px;
 }
 
-.visitor-info-location {
+.visitor-info-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.visitor-info-summary-value {
   min-width: 0;
   overflow: hidden;
-  color: var(--text-primary);
-  font-weight: 550;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.visitor-info-ip,
-.visitor-info-browser {
-  flex-shrink: 0;
-  white-space: nowrap;
+.visitor-info-location {
+  flex-shrink: 1;
+  color: var(--text-primary);
+  font-weight: 550;
 }
 
 .visitor-info-ip {
   max-width: 14rem;
+}
+
+/* 图标及尺寸沿用 Emerald 的 Tabler 图标，国旗不可用时显示定位图标。 */
+.visitor-info-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
-  font-family: var(--font-mono);
-  text-overflow: ellipsis;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-emerald-500) 10%, transparent);
+  color: var(--color-emerald-600);
+}
+
+.visitor-info-flag {
+  width: 16px;
+  height: 16px;
+  object-fit: cover;
+}
+
+.visitor-info-skeleton {
+  display: inline-block;
+  width: 60px;
+  max-width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--progress-bg) 70%, transparent);
+  vertical-align: middle;
+  animation: visitor-info-pulse 2s linear infinite;
+}
+
+@keyframes visitor-info-pulse {
+  50% { opacity: 0.5; }
 }
 
 .visitor-info-grid {
@@ -118,18 +163,21 @@
 
 .visitor-info-row {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  align-items: baseline;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
   gap: 6px;
   min-width: 0;
 }
 
 .visitor-info-label {
-  color: var(--text-tertiary);
-  font-size: 11px;
+  display: flex;
+  min-height: 18px;
+  align-items: center;
 }
 
 .visitor-info-value {
+  min-width: 0;
+  min-height: 18px;
   margin: 0;
   color: var(--text-primary);
   font-size: 12px;
@@ -148,11 +196,6 @@
   font-size: 12px;
 }
 
-.visitor-info-retry:disabled {
-  color: var(--text-tertiary);
-  cursor: wait;
-}
-
 .app-main.has-visitor-info {
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
@@ -163,8 +206,8 @@
     inset-inline-end: max(64px, calc(env(safe-area-inset-right) + 52px));
   }
 
-  .visitor-info-ip,
-  .visitor-info-browser {
+  .visitor-info-ip .visitor-info-summary-value,
+  .visitor-info-browser .visitor-info-summary-value {
     display: none;
   }
 }
@@ -174,10 +217,6 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
   }
-
-  .visitor-info-row {
-    grid-template-columns: 4.5em minmax(0, 1fr);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -185,5 +224,9 @@
   .visitor-info-panel,
   .visitor-info-panel[aria-hidden="false"] {
     transition: none;
+  }
+
+  .visitor-info-skeleton {
+    animation: none;
   }
 }

@@ -10,7 +10,7 @@
 
 ## 当前版本
 
-LuminaUltra **v1.6.2** 修正访客信息卡片的生硬过渡：展开与收起采用 240 毫秒线性宽高动画，内容先淡出再淡入，连续点击可从当前尺寸反向切换。继续提供紧凑卡片、IP 隐藏、资产统计访客开关与离线、高负载排序，基于已同步的 [LuminaPlus v1.3.2](https://github.com/shanyang242/Komari-Theme-LuminaPlus/releases/tag/v1.3.2)。完整变更见 [v1.6.2 更新说明](.github/release-notes/v1.6.2.md)。
+LuminaUltra **v1.6.3** 为访客信息卡片补齐 Emerald 同款 Tabler 图标与国旗，将加载文字改为骨架占位，并修复点击时出现蓝色边框的问题。继续保留 240 毫秒线性展开与收起动画、IP 隐藏、卡片开关和透明度设置，以及资产统计访客开关与离线、高负载排序。基于已同步的 [LuminaPlus v1.3.2](https://github.com/shanyang242/Komari-Theme-LuminaPlus/releases/tag/v1.3.2)，完整变更见 [v1.6.3 更新说明](.github/release-notes/v1.6.3.md)。
 
 ## 效果预览
 
@@ -190,9 +190,12 @@ Ping 图表可切换“延迟 / 丢包率”。丢包率按原始样本数量加
 参考 [komari-theme-emerald](https://github.com/Tokinx/komari-theme-emerald) 的访客卡片，在首页、节点详情、资产页和流量页底部显示当前访问者的信息，沿用 LuminaUltra 的浅色、深色和卡片背景设置。
 
 - 默认开启。管理员登录后，打开首页右上角“主题设置”，在“首页巡检 → 显示访客信息卡片”中开启或关闭，并点击“保存设置”；也可直接访问 `/?view=theme-manage`。主题管理页本身不显示卡片。
-- 桌面端折叠时显示来源、遮盖最后一段的 IPv4 和浏览器，例如 `1.1.1.1` 显示为 `1.1.1.*`；IPv6 遮盖后半段。手机端折叠时保留来源。
+- 桌面端折叠时显示来源、遮盖最后一段的 IPv4 和浏览器，例如 `1.1.1.1` 显示为 `1.1.1.*`；IPv6 遮盖后半段。手机端折叠时显示来源文字，并保留 IP 和浏览器图标。
+- 使用 Emerald 同款 Tabler 图标：来源定位、桌面设备、Socket.IO、浏览器、楼宇与时钟。有有效国家代码时显示主题内置国旗；代码缺失或图片加载失败时回退为定位图标。图标随主题打包。
+- 首次查询及失败后重试使用圆角短条骨架占位，不显示加载文字；有缓存数据时继续展示原有信息。占位颜色随浅色、深色主题变化。
 - 点击整张卡片展开为紧凑信息网格，显示来源、设备、完整 IP、浏览器、运营商和本次页面访问时间。再次点击任意信息区域、点击卡片外部或按 Esc 收起，支持 Enter 和空格操作；卡片不再显示“访客”标记及展开、收起提示文字。
 - 展开与收起均使用 240 毫秒线性宽高过渡，旧内容先淡出，新内容随后淡入；连续点击可平滑反向切换。浏览器启用“减少动态效果”时直接切换，不播放动画。
+- 鼠标和触屏点击不显示焦点边框；键盘操作保留中性灰色焦点提示。
 - 卡片背景共用“背景与透明度 → 卡片不透明度”设置，启用自定义背景后与节点卡片同步变化。
 - 网络信息依次尝试 `ip.sb`、`ipwho.is`、`ipapi.is`，每个来源最多等待 4 秒；成功后不再请求后续来源，同一页面会话内复用 10 分钟内的结果。
 - 网络查询失败不影响设备和浏览器信息，展开后可重新获取。关闭卡片会停止进行中的查询，关闭期间不发起新查询。
@@ -229,7 +232,7 @@ Ping 图表可切换“延迟 / 丢包率”。丢包率按原始样本数量加
 
 特别感谢 [Montia37/komari-theme-purcarte](https://github.com/Montia37/komari-theme-purcarte) 提供视频背景的设计思路与内置测试视频素材。
 
-感谢 [Tokinx/komari-theme-emerald](https://github.com/Tokinx/komari-theme-emerald) 提供访客信息卡片的交互与信息来源参考。
+感谢 [Tokinx/komari-theme-emerald](https://github.com/Tokinx/komari-theme-emerald) 提供访客信息卡片的交互、图标搭配与信息来源参考，相关图标来自 MIT 许可的 [Tabler Icons](https://github.com/tabler/tabler-icons)。
 
 也感谢 Komari 官方主题、Mochi 等主题项目为 Komari 生态提供的设计和实现思路。
 

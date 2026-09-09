@@ -1,7 +1,7 @@
 {
   "name": "komari-theme-luminaultra",
   "private": true,
-  "version": "1.6.2",
+  "version": "1.6.3",
   "type": "module",
   "description": "Komari-Theme-LuminaUltra",
   "author": "P0me1oo",
@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.5",
+    "@tabler/icons-react": "^3.46.0",
     "@tanstack/react-query": "^5.80.7",
     "clsx": "^2.1.1",
     "lucide-react": "^0.473.0",

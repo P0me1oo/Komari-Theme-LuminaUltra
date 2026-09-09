@@ -1,7 +1,35 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import {
+  IconBrandSocketIo,
+  IconBrowser,
+  IconBuildingSkyscraper,
+  IconClockHour4,
+  IconDeviceDesktop,
+  IconWorldPin,
+} from "@tabler/icons-react";
 import { getVisitorGeoInfo } from "@/services/visitorInfo";
 import { detectVisitorClient, formatVisitTime, maskVisitorIp } from "@/utils/visitorInfo";
+
+function VisitorLocationIcon({ countryCode = "" }: { countryCode?: string }) {
+  const [failedCode, setFailedCode] = useState("");
+  if (!countryCode || countryCode === failedCode) return <IconWorldPin size={14} />;
+
+  return (
+    <img
+      className="visitor-info-flag"
+      src={`/assets/flags/${countryCode}.svg`}
+      alt=""
+      width={16}
+      height={16}
+      onError={() => setFailedCode(countryCode)}
+    />
+  );
+}
+
+function VisitorInfoSkeleton() {
+  return <span className="visitor-info-skeleton" aria-hidden="true" />;
+}
 
 export function VisitorInfoCard() {
   const [expanded, setExpanded] = useState(false);
@@ -67,16 +95,24 @@ export function VisitorInfoCard() {
     };
   }, [expanded]);
 
-  const location = data?.location ?? (isFetching ? "正在获取来源" : "网络信息不可用");
-  const ip = data?.ip ?? (isFetching ? "获取中" : "暂无法获取");
-  const isp = data?.isp ?? (isFetching ? "获取中" : "暂无法获取");
+  const loading = !data && isFetching;
+  const location = data?.location ?? "网络信息不可用";
+  const ip = data?.ip ?? "暂无法获取";
+  const isp = data?.isp ?? "暂无法获取";
   const rows = [
-    { label: "来源", value: location },
-    { label: "设备", value: client.device },
-    { label: "IP", value: expanded ? ip : maskVisitorIp(ip), numeric: true },
-    { label: "浏览器", value: client.browser },
-    { label: "运营商", value: isp },
-    { label: "访问时间", value: visitTime, numeric: true },
+    {
+      id: "location", label: "来源", value: location, summary: true,
+      icon: <VisitorLocationIcon countryCode={data?.countryCode} />,
+    },
+    { id: "device", label: "设备", value: client.device, icon: <IconDeviceDesktop size={14} /> },
+    {
+      id: "ip", label: "IP", value: expanded ? ip : maskVisitorIp(ip),
+      summary: true, summaryValue: maskVisitorIp(ip), numeric: true,
+      icon: <IconBrandSocketIo size={14} />,
+    },
+    { id: "browser", label: "浏览器", value: client.browser, summary: true, icon: <IconBrowser size={14} /> },
+    { id: "isp", label: "运营商", value: isp, icon: <IconBuildingSkyscraper size={14} /> },
+    { id: "time", label: "访问时间", value: visitTime, numeric: true, icon: <IconClockHour4 size={14} /> },
   ];
 
   return (
@@ -85,11 +121,10 @@ export function VisitorInfoCard() {
         className="visitor-info-card"
         data-expanded={expanded}
         aria-label="来源与网络信息"
+        aria-busy={loading}
         ref={rootRef}
-        onClick={() => {
-          triggerRef.current?.focus({ preventScroll: true });
-          setExpanded((value) => !value);
-        }}
+        onPointerDown={() => triggerRef.current?.blur()}
+        onClick={() => setExpanded((value) => !value)}
       >
         <button
           type="button"
@@ -107,9 +142,18 @@ export function VisitorInfoCard() {
             className="visitor-info-panel visitor-info-summary"
             aria-hidden={expanded}
           >
-            <span className="visitor-info-location" title={location} aria-live="polite">{location}</span>
-            <span className="visitor-info-ip">{maskVisitorIp(ip)}</span>
-            <span className="visitor-info-browser">{client.browser}</span>
+            {rows.filter((row) => row.summary).map((row) => (
+              <span className={`visitor-info-summary-item visitor-info-${row.id}`} key={row.id}>
+                <span className="visitor-info-icon" aria-hidden="true">{row.icon}</span>
+                <span
+                  className={`visitor-info-summary-value${row.numeric ? " visitor-info-numeric" : ""}`}
+                  title={!loading && row.id === "location" ? location : undefined}
+                >
+                  <span className="sr-only">{row.label}：</span>
+                  {loading ? <VisitorInfoSkeleton /> : row.summaryValue ?? row.value}
+                </span>
+              </span>
+            ))}
           </div>
           <div
             id={detailsId}
@@ -120,25 +164,27 @@ export function VisitorInfoCard() {
           >
             <dl className="visitor-info-grid">
               {rows.map((row) => (
-                <div className="visitor-info-row" key={row.label}>
-                  <dt className="visitor-info-label">{row.label}</dt>
+                <div className="visitor-info-row" key={row.id}>
+                  <dt className="visitor-info-label">
+                    <span className="visitor-info-icon" aria-hidden="true">{row.icon}</span>
+                    <span className="sr-only">{row.label}</span>
+                  </dt>
                   <dd className={`visitor-info-value${row.numeric ? " visitor-info-numeric" : ""}`}>
-                    {row.value}
+                    {loading ? <VisitorInfoSkeleton /> : row.value}
                   </dd>
                 </div>
               ))}
             </dl>
-            {!data && (
+            {!data && !isFetching && (
               <button
                 type="button"
                 className="visitor-info-retry"
-                disabled={isFetching}
                 onClick={(event) => {
                   event.stopPropagation();
                   void refetch();
                 }}
               >
-                {isFetching ? "正在获取网络信息" : "重新获取网络信息"}
+                重新获取网络信息
               </button>
             )}
           </div>

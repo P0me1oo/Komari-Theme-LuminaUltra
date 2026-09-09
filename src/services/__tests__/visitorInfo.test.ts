@@ -16,6 +16,7 @@ describe("访客网络信息查询", () => {
       ip: "203.0.113.42",
       organization: "示例网络",
       country: "新加坡",
+      country_code: "SG",
       region: "Singapore",
     }));
     vi.stubGlobal("fetch", fetchMock);
@@ -23,6 +24,7 @@ describe("访客网络信息查询", () => {
       ip: "203.0.113.42",
       isp: "示例网络",
       location: "新加坡 · Singapore",
+      countryCode: "SG",
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -34,6 +36,7 @@ describe("访客网络信息查询", () => {
         success: true,
         ip: "2001:db8::42",
         country: "德国",
+        country_code: "de",
         city: "Frankfurt",
         connection: { org: "备用网络" },
       }));
@@ -42,6 +45,7 @@ describe("访客网络信息查询", () => {
       ip: "2001:db8::42",
       isp: "备用网络",
       location: "德国 · Frankfurt",
+      countryCode: "DE",
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -53,14 +57,55 @@ describe("访客网络信息查询", () => {
       .mockResolvedValueOnce(json({
         ip: "198.51.100.24",
         company: { name: "第三方网络" },
-        location: { country: "日本", state: "Tokyo" },
+        asn: { country: "US" },
+        location: { country: "日本", country_code: "JP", state: "Tokyo" },
       }));
     vi.stubGlobal("fetch", fetchMock);
     await expect(getVisitorGeoInfo()).resolves.toEqual({
       ip: "198.51.100.24",
       isp: "第三方网络",
       location: "日本 · Tokyo",
+      countryCode: "JP",
     });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([
+    [" sg ", "SG"],
+    ["uS", "US"],
+    [undefined, ""],
+    [null, ""],
+    [42, ""],
+    ["SGP", ""],
+    ["../US", ""],
+  ])("规范化国家代码 %j，缺失或无效代码不影响有效网络信息", async (countryCode, expected) => {
+    const fetchMock = vi.fn().mockResolvedValue(json({
+      ip: "203.0.113.42",
+      country_code: countryCode,
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getVisitorGeoInfo()).resolves.toMatchObject({
+      ip: "203.0.113.42",
+      countryCode: expected,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [{ country: " de " }, { country: "JP" }, "DE"],
+    [{ country: "unknown" }, { country: "jp" }, "JP"],
+  ])("第三个来源缺少有效地区代码时按顺序使用网络和机房国家", async (asn, datacenter, expected) => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json({}, 429))
+      .mockResolvedValueOnce(json({ success: false, ip: "192.0.2.1" }))
+      .mockResolvedValueOnce(json({
+        ip: "198.51.100.24",
+        location: { country_code: "unknown" },
+        asn,
+        datacenter,
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getVisitorGeoInfo()).resolves.toMatchObject({ countryCode: expected });
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 

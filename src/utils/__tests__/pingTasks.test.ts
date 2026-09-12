@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyHomepageMultiPingBatchPatch,
   createHomepageMultiPingTaskOverride,
   normalizeHomepageMultiPingNodeTaskIds,
   normalizeHomepageMultiPingTaskIds,
@@ -9,6 +10,98 @@ import {
   resolveHomepagePingSelections,
   resolveHomepageMultiPingTaskIds,
 } from "@/utils/pingTasks";
+
+describe("批量设置三网探测点", () => {
+  it("分别保留每台服务器不更改的线路，只更新所选服务器", () => {
+    const overrides = {
+      "node-a": [4, 5, 6],
+      "node-b": [7, 8, 9],
+      "node-c": [10, 11, 12],
+    };
+    const result = applyHomepageMultiPingBatchPatch(
+      ["node-a", "node-b"], [1, 2, 3], overrides, [13, null, 14],
+    );
+
+    expect(result.nodeTaskIds).toEqual({
+      "node-a": [13, 5, 14],
+      "node-b": [13, 8, 14],
+      "node-c": [10, 11, 12],
+    });
+    expect(result.changedCount).toBe(2);
+    expect(result.issues).toEqual([]);
+    expect(result.nodeTaskIds["node-c"]).toBe(overrides["node-c"]);
+    expect(overrides["node-a"]).toEqual([4, 5, 6]);
+    expect(overrides["node-b"]).toEqual([7, 8, 9]);
+    expect(normalizeHomepageMultiPingNodeTaskIds(result.nodeTaskIds)).toEqual(result.nodeTaskIds);
+  });
+
+  it("对继承默认的服务器按当前全局线路建立覆盖", () => {
+    const result = applyHomepageMultiPingBatchPatch(
+      ["node-a", "node-b"], [1, 2, 3], { "node-b": [4, 5, 6] }, [null, 9, null],
+    );
+
+    expect(result.nodeTaskIds).toEqual({ "node-a": [1, 9, 3], "node-b": [4, 9, 6] });
+    expect(result.changedCount).toBe(2);
+  });
+
+  it("全部不更改、未选择节点或当前线路相同时不创建额外覆盖", () => {
+    const overrides = { "node-a": [4, 5, 6] };
+    for (const result of [
+      applyHomepageMultiPingBatchPatch(["node-a", "node-b"], [1, 2, 3], overrides, [null, null, null]),
+      applyHomepageMultiPingBatchPatch([], [1, 2, 3], overrides, [7, 8, 9]),
+      applyHomepageMultiPingBatchPatch(["node-b"], [1, 2, 3], overrides, [1, null, null]),
+      applyHomepageMultiPingBatchPatch(["node-a"], [1, 2, 3], overrides, [null, 5, null]),
+    ]) {
+      expect(result.nodeTaskIds).toBe(overrides);
+      expect(result.changedCount).toBe(0);
+      expect(result.issues).toEqual([]);
+    }
+  });
+
+  it("目标探测点与保留线路重复时阻止整批修改，不自动交换线路", () => {
+    const overrides = { "node-a": [1, 2, 3], "node-b": [7, 4, 9] };
+    const result = applyHomepageMultiPingBatchPatch(
+      ["node-a", "node-b"], [1, 2, 3], overrides, [4, null, null],
+    );
+
+    expect(result.nodeTaskIds).toBe(overrides);
+    expect(result.changedCount).toBe(0);
+    expect(result.issues).toEqual([{ uuid: "node-b", reason: "duplicate" }]);
+    expect(overrides).toEqual({ "node-a": [1, 2, 3], "node-b": [7, 4, 9] });
+  });
+
+  it("允许显式交换两条线路，另一条线路保持不变", () => {
+    const result = applyHomepageMultiPingBatchPatch(
+      ["node-a"], [1, 2, 3], {}, [3, null, 1],
+    );
+
+    expect(result.nodeTaskIds).toEqual({ "node-a": [3, 2, 1] });
+    expect(result.changedCount).toBe(1);
+    expect(result.issues).toEqual([]);
+  });
+
+  it("保留线路缺失时阻止修改，明确选齐三条后可以建立完整配置", () => {
+    const overrides = {};
+    const incomplete = applyHomepageMultiPingBatchPatch(
+      ["node-a"], [], overrides, [null, 2, 3],
+    );
+    expect(incomplete.nodeTaskIds).toBe(overrides);
+    expect(incomplete.issues).toEqual([{ uuid: "node-a", reason: "incomplete" }]);
+
+    expect(applyHomepageMultiPingBatchPatch(["node-a"], [], overrides, [1, 2, 3])).toEqual({
+      nodeTaskIds: { "node-a": [1, 2, 3] }, changedCount: 1, issues: [],
+    });
+  });
+
+  it("重复选择同一服务器只更新和统计一次", () => {
+    const result = applyHomepageMultiPingBatchPatch(
+      ["node-a", "node-a"], [1, 2, 3], {}, [4, null, null],
+    );
+
+    expect(result.nodeTaskIds).toEqual({ "node-a": [4, 2, 3] });
+    expect(result.changedCount).toBe(1);
+  });
+});
 
 describe("homepage ping task bindings", () => {
   it("accepts only positive decimal safe integers", () => {

@@ -14,6 +14,7 @@ import {
 import { clsx } from "clsx";
 import { Flag } from "@/components/ui/Flag";
 import { Spinner } from "@/components/ui/Spinner";
+import { MultiPingBatchEditor } from "./MultiPingBatchEditor";
 import type { AdminClient, PingTask } from "@/types/komari";
 import {
   createHomepageMultiPingTaskOverride,
@@ -83,6 +84,9 @@ export function MultiPingNodeConfigPanel({
   const [search, setSearch] = useState("");
   const [group, setGroup] = useState("");
   const [filter, setFilter] = useState<NodeFilter>("all");
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchSelection, setBatchSelection] = useState<Set<string>>(() => new Set());
+  const [batchPending, setBatchPending] = useState(false);
   const [selectedUuid, setSelectedUuid] = useState(() => clients[0]?.uuid ?? "");
   const [mobileEditorOpen, setMobileEditorOpen] = useState(false);
   const [firstVisibleNodeIndex, setFirstVisibleNodeIndex] = useState(0);
@@ -131,6 +135,14 @@ export function MultiPingNodeConfigPanel({
       );
     });
   }, [clients, filter, group, nodeTaskIds, search]);
+  const batchClients = useMemo(
+    () => clients.filter((client) => batchSelection.has(client.uuid)),
+    [batchSelection, clients],
+  );
+  const allFilteredSelected = filteredClients.length > 0 &&
+    filteredClients.every((client) => batchSelection.has(client.uuid));
+  const selectedOutsideFilterCount = batchClients.length -
+    filteredClients.filter((client) => batchSelection.has(client.uuid)).length;
   const selectedClient = useMemo(
     () =>
       filteredClients.find((client) => client.uuid === selectedUuid) ??
@@ -189,6 +201,26 @@ export function MultiPingNodeConfigPanel({
   const selectClient = (uuid: string) => {
     setSelectedUuid(uuid);
     setMobileEditorOpen(true);
+  };
+  const toggleBatchClient = (uuid: string) => {
+    if (saving) return;
+    setBatchSelection((current) => {
+      const next = new Set(current);
+      if (next.has(uuid)) next.delete(uuid);
+      else next.add(uuid);
+      return next;
+    });
+  };
+  const toggleFilteredSelection = () => {
+    if (saving) return;
+    setBatchSelection((current) => {
+      const next = new Set(current);
+      filteredClients.forEach((client) => {
+        if (allFilteredSelected) next.delete(client.uuid);
+        else next.add(client.uuid);
+      });
+      return next;
+    });
   };
   const enableOverride = () => {
     if (!selectedClient || !canEnableOverride) return;
@@ -272,6 +304,26 @@ export function MultiPingNodeConfigPanel({
             )}
           >
             <div className="multi-ping-config-sidebar-tools">
+              <div className="multi-ping-config-mode" aria-label="配置方式">
+                <button
+                  type="button"
+                  disabled={saving}
+                  aria-pressed={!batchMode}
+                  onClick={() => setBatchMode(false)}
+                  className={clsx(!batchMode && "is-active")}
+                >
+                  单台设置
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  aria-pressed={batchMode}
+                  onClick={() => setBatchMode(true)}
+                  className={clsx(batchMode && "is-active")}
+                >
+                  批量设置
+                </button>
+              </div>
               <label className="surface-inset flex items-center gap-2 px-3 py-2">
                 <Search size={14} className="text-[var(--text-tertiary)]" />
                 <input
@@ -316,6 +368,45 @@ export function MultiPingNodeConfigPanel({
                   </option>
                 ))}
               </select>
+              {batchMode && (
+                <div className="multi-ping-config-batch-selection">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[12px] text-[var(--text-secondary)]">
+                      已选 {batchClients.length} 台
+                    </span>
+                    <button
+                      type="button"
+                      disabled={saving || batchClients.length === 0}
+                      onClick={() => setBatchSelection(new Set())}
+                      className="theme-manage-button is-compact"
+                    >
+                      清空选择
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={saving || filteredClients.length === 0}
+                    onClick={toggleFilteredSelection}
+                    className="theme-manage-button is-compact"
+                  >
+                    {allFilteredSelected ? "取消当前全选" : "全选筛选结果"}
+                    {`（${filteredClients.length}）`}
+                  </button>
+                  {selectedOutsideFilterCount > 0 && (
+                    <span className="text-[12px] text-[var(--text-secondary)]" role="status">
+                      其中 {selectedOutsideFilterCount} 台不在当前筛选结果中
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    disabled={batchClients.length === 0}
+                    onClick={() => setMobileEditorOpen(true)}
+                    className="theme-manage-button is-primary multi-ping-config-batch-open"
+                  >
+                    设置所选服务器线路
+                  </button>
+                </div>
+              )}
             </div>
 
             <div
@@ -339,17 +430,11 @@ export function MultiPingNodeConfigPanel({
                   const override = nodeTaskIds[client.uuid];
                   const invalidIds =
                     invalidTaskIdsByClient.get(client.uuid) ?? EMPTY_TASK_IDS;
-                  const active = selectedClient?.uuid === client.uuid;
-                  return (
-                    <button
-                      key={client.uuid}
-                      type="button"
-                      onClick={() => selectClient(client.uuid)}
-                      className={clsx("multi-ping-config-node", active && "is-active")}
-                      style={{ transform: `translateY(${clientIndex * NODE_ROW_HEIGHT}px)` }}
-                      aria-posinset={clientIndex + 1}
-                      aria-setsize={filteredClients.length}
-                    >
+                  const active = batchMode
+                    ? batchSelection.has(client.uuid)
+                    : selectedClient?.uuid === client.uuid;
+                  const content = (
+                    <>
                       <Flag region={client.region} size={15} />
                       <span className="min-w-0 flex-1 text-left">
                         <span className="block truncate text-[13px] font-medium text-[var(--text-primary)]">
@@ -388,6 +473,32 @@ export function MultiPingNodeConfigPanel({
                           className="text-[var(--text-tertiary)]"
                         />
                       )}
+                    </>
+                  );
+                  const rowClassName = clsx("multi-ping-config-node", active && "is-active");
+                  const rowStyle = { transform: `translateY(${clientIndex * NODE_ROW_HEIGHT}px)` };
+                  return batchMode ? (
+                    <label key={client.uuid} className={rowClassName} style={rowStyle}>
+                      <input
+                        type="checkbox"
+                        checked={batchSelection.has(client.uuid)}
+                        disabled={saving}
+                        onChange={() => toggleBatchClient(client.uuid)}
+                        aria-label={`选择服务器 ${client.name || client.uuid}`}
+                      />
+                      {content}
+                    </label>
+                  ) : (
+                    <button
+                      key={client.uuid}
+                      type="button"
+                      onClick={() => selectClient(client.uuid)}
+                      className={rowClassName}
+                      style={rowStyle}
+                      aria-posinset={clientIndex + 1}
+                      aria-setsize={filteredClients.length}
+                    >
+                      {content}
                     </button>
                   );
                 })}
@@ -406,7 +517,19 @@ export function MultiPingNodeConfigPanel({
               mobileEditorOpen && "is-mobile-open",
             )}
           >
-            {selectedClient ? (
+            {batchMode ? (
+              <MultiPingBatchEditor
+                clients={batchClients}
+                tasks={tasks}
+                globalTaskIds={globalTaskIds}
+                nodeTaskIds={nodeTaskIds}
+                fakePingForUnbound={fakePingForUnbound}
+                saving={saving}
+                onChange={onChange}
+                onPendingChange={setBatchPending}
+                onBack={() => setMobileEditorOpen(false)}
+              />
+            ) : selectedClient ? (
               <>
                 <div className="multi-ping-config-editor-head">
                   <button
@@ -585,6 +708,10 @@ export function MultiPingNodeConfigPanel({
             >
               {saveError}
             </span>
+          ) : batchPending ? (
+            <span role="status" className="multi-ping-config-footer-error text-[12px] text-[var(--text-secondary)]">
+              请先应用或重置批量设置。
+            </span>
           ) : (
             <span className="multi-ping-config-footer-hint text-[11px] text-[var(--text-tertiary)]">
               这里的修改会和其他主题设置一起保存。
@@ -596,7 +723,7 @@ export function MultiPingNodeConfigPanel({
             </button>
             <button
               type="button"
-              disabled={saveDisabled || saving}
+              disabled={saveDisabled || saving || batchPending}
               onClick={() => void onSave().then((saved) => saved && onClose())}
               className="theme-manage-button is-primary"
             >

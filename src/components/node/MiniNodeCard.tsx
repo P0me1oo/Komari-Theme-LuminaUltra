@@ -428,6 +428,7 @@ export const MiniNodeCard = memo(function MiniNodeCard({
     osName,
   } = model;
   const showNodePrice = themeSettings.isReady && themeSettings.showNodePrice;
+  const showIpStackBadges = themeSettings.isReady && themeSettings.showIpStackBadges;
 
   return (
     <article className={clsx("mini-node-card", isOffline && "is-offline")}>
@@ -439,8 +440,8 @@ export const MiniNodeCard = memo(function MiniNodeCard({
       <MiniChips
         tags={footerTags}
         renewalPrice={showNodePrice ? renewalPrice : null}
-        ipv4={node.ipv4}
-        ipv6={node.ipv6}
+        ipv4={showIpStackBadges ? node.ipv4 : undefined}
+        ipv6={showIpStackBadges ? node.ipv6 : undefined}
       />
       <MiniVitals node={node} loadFraction={loadFraction} />
       <MiniFlow node={node} upRate={upRate} downRate={downRate} />

@@ -114,6 +114,7 @@ export const NodeCard = memo(function NodeCard({
           subtitle={subtitle}
           osName={osName}
           showTodayTraffic={showTodayTraffic}
+          showIpStackBadges={themeSettings.isReady && themeSettings.showIpStackBadges}
         />
 
         <div className="server-card-stack">
@@ -194,13 +195,16 @@ function NodeCardHeader({
   subtitle,
   osName,
   showTodayTraffic,
+  showIpStackBadges,
 }: {
   node: NodeCardNode;
   subtitle: string;
   osName: string;
   showTodayTraffic: boolean;
+  showIpStackBadges: boolean;
 }) {
   const detailLabels = nodeDetailLinkLabels(node.name, osName);
+  const hasIpStackBadges = showIpStackBadges && Boolean(node.ipv4 || node.ipv6);
   return (
     <header className="server-card-header">
       <div className="server-card-title-block">
@@ -214,14 +218,14 @@ function NodeCardHeader({
             {node.name}
           </Link>
         </div>
-        {(subtitle || node.ipv4 || node.ipv6) && (
+        {(subtitle || hasIpStackBadges) && (
           <div className="server-card-subtitle-row">
             {subtitle && (
               <span className="server-card-subtitle" title={subtitle}>
                 {subtitle}
               </span>
             )}
-            <IpStackBadges ipv4={node.ipv4} ipv6={node.ipv6} />
+            {hasIpStackBadges && <IpStackBadges ipv4={node.ipv4} ipv6={node.ipv6} />}
           </div>
         )}
       </div>

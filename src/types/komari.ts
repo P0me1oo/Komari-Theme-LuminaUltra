@@ -152,6 +152,7 @@ export interface ThemeSettings {
   compactShowBilling?: boolean;
   compactShowUptime?: boolean;
   showNodePrice?: boolean;
+  showIpStackBadges?: boolean;
   showConnections?: boolean;
   showTodayTrafficPopover?: boolean;
   hiddenNodes?: string[];

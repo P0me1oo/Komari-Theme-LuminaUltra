@@ -365,6 +365,7 @@ function CompactNodeChips({
   ipv4?: string | null;
   ipv6?: string | null;
 }) {
+  if (!subtitle && tags.length === 0 && !ipv4 && !ipv6) return null;
   // 完整 tag 列表挂在 lane 的 tooltip 上;chip 不带自己的 title,hover 会穿透到 lane 上 ——
   // 被裁剪 lane 折行挤出去的 tag 就靠这个保持可见,不用显示"+N"角标。
   const tagTitle = joinTagTitle(tags);
@@ -722,6 +723,7 @@ export const CompactNodeCard = memo(function CompactNodeCard({
   const showUptime = themeSettings.isReady && themeSettings.compactShowUptime;
   const showConnections = themeSettings.isReady && themeSettings.showConnections;
   const showNodePrice = themeSettings.isReady && themeSettings.showNodePrice;
+  const showIpStackBadges = themeSettings.isReady && themeSettings.showIpStackBadges;
   // 开关关闭或节点离线时,完全跳过格式化工作。
   const uptimeLabel = showUptime && !isOffline ? formatCompactUptime(node.uptime) : "";
 
@@ -732,7 +734,12 @@ export const CompactNodeCard = memo(function CompactNodeCard({
         osName={osName}
         showTodayTraffic={showTodayTraffic}
       />
-      <CompactNodeChips subtitle={subtitle} tags={footerTags} ipv4={node.ipv4} ipv6={node.ipv6} />
+      <CompactNodeChips
+        subtitle={subtitle}
+        tags={footerTags}
+        ipv4={showIpStackBadges ? node.ipv4 : undefined}
+        ipv6={showIpStackBadges ? node.ipv6 : undefined}
+      />
       <CompactNodeVitals node={node} loadFraction={loadFraction} />
       <CompactNodeInfoStrip
         node={node}

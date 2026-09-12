@@ -95,6 +95,7 @@ export interface ResolvedThemeSettings {
   compactShowBilling: boolean;
   compactShowUptime: boolean;
   showNodePrice: boolean;
+  showIpStackBadges: boolean;
   showConnections: boolean;
   showTodayTrafficPopover: boolean;
   hiddenNodes: string[];
@@ -156,6 +157,7 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   compactShowBilling: true,
   compactShowUptime: true,
   showNodePrice: true,
+  showIpStackBadges: true,
   showConnections: false,
   showTodayTrafficPopover: true,
   hiddenNodes: [],
@@ -328,6 +330,7 @@ export function normalizeThemeSettings(
     compactShowBilling: enabledUnlessFalse(settings?.compactShowBilling),
     compactShowUptime: enabledUnlessFalse(settings?.compactShowUptime),
     showNodePrice: enabledUnlessFalse(settings?.showNodePrice),
+    showIpStackBadges: enabledUnlessFalse(settings?.showIpStackBadges),
     // 默认关闭(需手动开启):连接数是个小众指标,很多 agent 也不上报,所以只在显式启用时才显示。
     showConnections: settings?.showConnections === true,
     showTodayTrafficPopover: enabledUnlessFalse(settings?.showTodayTrafficPopover),

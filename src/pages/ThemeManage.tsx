@@ -328,6 +328,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     compactShowBilling: settings.compactShowBilling,
     compactShowUptime: settings.compactShowUptime,
     showNodePrice: settings.showNodePrice,
+    showIpStackBadges: settings.showIpStackBadges,
     showConnections: settings.showConnections,
     showTodayTrafficPopover: settings.showTodayTrafficPopover,
     hiddenNodes: settings.hiddenNodes,
@@ -2061,6 +2062,13 @@ export function ThemeManage() {
               title="显示服务器价格"
               desc="控制节点卡片底部、迷你卡片和列表中的续费价格；关闭后不影响资产统计页。"
               checked={draft.showNodePrice}
+              onPatch={patch}
+            />
+            <ToggleRow
+              field="showIpStackBadges"
+              title="显示 V4/V6 标签"
+              desc="控制大卡片、小卡片和迷你卡片上的 V4/V6 标签。"
+              checked={draft.showIpStackBadges}
               onPatch={patch}
             />
             <ToggleRow

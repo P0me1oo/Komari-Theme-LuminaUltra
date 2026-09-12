@@ -1077,6 +1077,32 @@ body::after {
   box-shadow: inset 3px 0 0 var(--accent-500);
 }
 
+.multi-ping-config-node input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  accent-color: var(--accent-500);
+}
+
+label.multi-ping-config-node {
+  cursor: pointer;
+}
+
+.multi-ping-config-node:focus-within {
+  outline: 2px solid var(--accent-500);
+  outline-offset: -2px;
+}
+
+.multi-ping-config-batch-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.multi-ping-config-sidebar .multi-ping-config-batch-open {
+  display: none;
+}
+
 .multi-ping-config-status {
   display: inline-flex;
   flex: 0 0 auto;
@@ -1260,6 +1286,10 @@ body::after {
 
   .multi-ping-config-mode {
     width: 100%;
+  }
+
+  .multi-ping-config-sidebar .multi-ping-config-batch-open {
+    display: inline-flex;
   }
 }
 

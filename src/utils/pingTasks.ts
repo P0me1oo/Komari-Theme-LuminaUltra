@@ -2,6 +2,14 @@ export type HomepagePingTaskBindings = Record<string, string[]>;
 export type HomepageMultiPingNodeTaskIds = Record<string, number[]>;
 export const HOMEPAGE_MULTI_PING_TASK_COUNT = 3;
 
+export type HomepageMultiPingBatchPatch = [number | null, number | null, number | null];
+
+interface HomepageMultiPingBatchResult {
+  nodeTaskIds: HomepageMultiPingNodeTaskIds;
+  changedCount: number;
+  issues: { uuid: string; reason: "incomplete" | "duplicate" }[];
+}
+
 const invertedBindingsCache = new WeakMap<HomepagePingTaskBindings, Map<string, number>>();
 
 function parseTaskId(taskId: string) {
@@ -83,6 +91,45 @@ export function createHomepageMultiPingTaskOverride(
   return nextTaskIds.length === HOMEPAGE_MULTI_PING_TASK_COUNT
     ? nextTaskIds
     : null;
+}
+
+/** null 表示保留该服务器当前线路；整批校验通过后才应用，禁止自动交换其他线路。 */
+export function applyHomepageMultiPingBatchPatch(
+  clientUuids: string[],
+  globalTaskIds: number[],
+  nodeTaskIds: HomepageMultiPingNodeTaskIds,
+  patch: HomepageMultiPingBatchPatch,
+): HomepageMultiPingBatchResult {
+  const unchanged: HomepageMultiPingBatchResult = {
+    nodeTaskIds,
+    changedCount: 0,
+    issues: [],
+  };
+  if (patch.every((taskId) => taskId === null)) return unchanged;
+
+  const updates: HomepageMultiPingNodeTaskIds = {};
+  const issues: HomepageMultiPingBatchResult["issues"] = [];
+  for (const uuid of new Set(clientUuids)) {
+    const currentTaskIds = nodeTaskIds[uuid] ?? globalTaskIds;
+    const nextTaskIds = patch.map((taskId, slot) => taskId ?? currentTaskIds[slot]);
+    if (nextTaskIds.some((taskId) => !Number.isSafeInteger(taskId) || taskId <= 0)) {
+      issues.push({ uuid, reason: "incomplete" });
+      continue;
+    }
+    if (new Set(nextTaskIds).size !== HOMEPAGE_MULTI_PING_TASK_COUNT) {
+      issues.push({ uuid, reason: "duplicate" });
+      continue;
+    }
+    if (nextTaskIds.some((taskId, slot) => taskId !== currentTaskIds[slot])) {
+      updates[uuid] = nextTaskIds;
+    }
+  }
+
+  if (issues.length > 0) return { ...unchanged, issues };
+  const changedCount = Object.keys(updates).length;
+  return changedCount === 0
+    ? unchanged
+    : { nodeTaskIds: { ...nodeTaskIds, ...updates }, changedCount, issues };
 }
 
 export function normalizeHomepagePingTaskBindings(

@@ -121,7 +121,7 @@ export function Assets() {
   const themeSettings = useThemeSettings();
   const auth = useAuth();
 
-  if (!themeSettings.isReady || (!themeSettings.allowGuestCostSummary && auth.isPending)) {
+  if (!themeSettings.isReady || (!themeSettings.showCostsToGuests && auth.isPending)) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <Spinner size={24} />
@@ -159,7 +159,7 @@ function AssetsContent() {
       return getExchangeRates(themeSettings.costRateApiUrl, { signal, ignoreCache });
     },
     staleTime: 60 * 60 * 1000,
-    enabled: themeSettings.isReady && nodes.length > 0,
+    enabled: nodes.length > 0,
     retry: 1,
   });
   const summary = useMemo(

@@ -5,7 +5,6 @@ import { clsx } from "clsx";
 import { Flag } from "@/components/ui/Flag";
 import { OsLogo } from "@/components/ui/OsLogo";
 import { useNodeCardModel } from "@/hooks/useNodeCardModel";
-import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useMetricColorsVersion } from "@/hooks/useMetricColors";
 import { formatBytes } from "@/utils/format";
@@ -225,14 +224,13 @@ function ListLatency({
   );
 }
 
-const NodeRow = memo(function NodeRow({ uuid }: { uuid: string }) {
+const NodeRow = memo(function NodeRow({ uuid, showCosts }: { uuid: string; showCosts: boolean }) {
   const { resolvedAppearance } = usePreferences();
   const colorsVersion = useMetricColorsVersion();
   const redrawKey = `${resolvedAppearance}:${colorsVersion}`;
   const model = useNodeCardModel(uuid, {
     pingBucketCount: LIST_PING_BUCKETS,
   });
-  const themeSettings = useThemeSettings();
 
   if (!model.node) {
     return <div className="node-list-row is-loading" aria-busy />;
@@ -263,7 +261,6 @@ const NodeRow = memo(function NodeRow({ uuid }: { uuid: string }) {
   );
   const listPingStatus = formatListPingStatus(ping.lastValue, listPingState);
   const detailLabels = nodeDetailLinkLabels(node.name, osName);
-  const showNodePrice = themeSettings.isReady && themeSettings.showNodePrice;
   const usedPct = `${Math.round(clamp01(traffic.fraction) * 100)}%`;
   const rowLabel = [
     node.name,
@@ -297,9 +294,9 @@ const NodeRow = memo(function NodeRow({ uuid }: { uuid: string }) {
               {node.name}
             </span>
           </div>
-          {((showNodePrice && renewalPrice) || footerTags.length > 0) && (
+          {((showCosts && renewalPrice) || footerTags.length > 0) && (
             <div className="node-list-chips" title={footerTags.length > 0 ? joinTagTitle(footerTags) : undefined}>
-              {showNodePrice && renewalPrice && (
+              {showCosts && renewalPrice && (
                 <span className="dstatus-price-chip">
                   <CircleDollarSign size={12} strokeWidth={2.2} />
                   {renewalPrice}
@@ -395,7 +392,7 @@ const NodeRow = memo(function NodeRow({ uuid }: { uuid: string }) {
   );
 });
 
-export function NodeListView({ uuids }: { uuids: string[] }) {
+export function NodeListView({ uuids, showCosts = true }: { uuids: string[]; showCosts?: boolean }) {
   return (
     <div className="node-list-scroll">
       <div className="node-list">
@@ -412,7 +409,7 @@ export function NodeListView({ uuids }: { uuids: string[] }) {
           <div className="node-list-cell col-life">在线 / 到期</div>
         </div>
         {uuids.map((uuid) => (
-          <NodeRow key={uuid} uuid={uuid} />
+          <NodeRow key={uuid} uuid={uuid} showCosts={showCosts} />
         ))}
       </div>
     </div>

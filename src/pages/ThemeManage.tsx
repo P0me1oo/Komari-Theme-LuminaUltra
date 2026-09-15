@@ -308,9 +308,9 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     enableHomeSort: settings.enableHomeSort,
     homeSortField: settings.homeSortField,
     homeSortDirection: settings.homeSortDirection,
+    showCostsToGuests: settings.showCostsToGuests,
     showCostSummary: settings.showCostSummary,
     showCostSummaryFloatingButton: settings.showCostSummaryFloatingButton,
-    allowGuestCostSummary: settings.allowGuestCostSummary,
     showOverviewOnline: settings.showOverviewOnline,
     showOverviewBandwidth: settings.showOverviewBandwidth,
     showOverviewTraffic: settings.showOverviewTraffic,
@@ -327,7 +327,6 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     compactShowTrafficTotal: settings.compactShowTrafficTotal,
     compactShowBilling: settings.compactShowBilling,
     compactShowUptime: settings.compactShowUptime,
-    showNodePrice: settings.showNodePrice,
     showIpStackBadges: settings.showIpStackBadges,
     showConnections: settings.showConnections,
     showTodayTrafficPopover: settings.showTodayTrafficPopover,
@@ -1224,6 +1223,8 @@ export function ThemeManage() {
         ...draftThemeSettings,
       };
       delete nextSettings.homepagePingTask;
+      delete nextSettings.allowGuestCostSummary;
+      delete nextSettings.showNodePrice;
       await saveThemeSettings(config.theme, nextSettings);
       await queryClient.invalidateQueries({ queryKey: ["public"] });
       if (editVersionRef.current === submittedEditVersion) {
@@ -2058,13 +2059,6 @@ export function ThemeManage() {
           </div>
           <div className="mt-2 grid gap-3 md:grid-cols-2">
             <ToggleRow
-              field="showNodePrice"
-              title="显示服务器价格"
-              desc="控制节点卡片底部、迷你卡片和列表中的续费价格；关闭后不影响资产统计页。"
-              checked={draft.showNodePrice}
-              onPatch={patch}
-            />
-            <ToggleRow
               field="showIpStackBadges"
               title="显示 V4/V6 标签"
               desc="控制大卡片、小卡片和迷你卡片上的 V4/V6 标签。"
@@ -2106,7 +2100,7 @@ export function ThemeManage() {
             <ToggleRow
               field="compactShowBilling"
               title="显示到期时间"
-              desc="控制小卡片中的到期日期和剩余天数；服务器价格由“显示服务器价格”单独控制。"
+              desc="控制小卡片中的到期日期和剩余天数，不受费用公开设置影响。"
               checked={draft.compactShowBilling}
               onPatch={patch}
             />
@@ -2130,6 +2124,13 @@ export function ThemeManage() {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
           <div className="flex flex-col gap-3">
             <ToggleRow
+              field="showCostsToGuests"
+              title="向未登录访客公开费用"
+              desc="关闭后，卡片价格、资产金额、资产页及入口、价格排序仅登录后可见；到期时间仍正常显示。"
+              checked={draft.showCostsToGuests}
+              onPatch={patch}
+            />
+            <ToggleRow
               field="showCostSummary"
               title="显示资产页入口按钮"
               desc="在首页资产概览卡右上角显示进入资产统计页的按钮。"
@@ -2141,13 +2142,6 @@ export function ThemeManage() {
               title="显示资产快捷入口"
               desc="在首页顶部的快捷栏中显示资产统计入口，与主题设置并列。"
               checked={draft.showCostSummaryFloatingButton}
-              onPatch={patch}
-            />
-            <ToggleRow
-              field="allowGuestCostSummary"
-              title="向访客开放资产统计"
-              desc="关闭后，未登录访客看不到资产入口，直接访问资产页也会返回首页；登录后可查看。"
-              checked={draft.allowGuestCostSummary}
               onPatch={patch}
             />
             <label className="flex flex-col gap-2">

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_THEME_SETTINGS,
+  canViewCosts,
   normalizeThemeSettings,
   shouldShowAdminEntry,
 } from "@/utils/themeSettings";
@@ -102,7 +103,7 @@ describe("normalizeThemeSettings", () => {
     expect(normalizeThemeSettings({ showOverviewRatings: false }).showOverviewRatings).toBe(false);
   });
 
-  it("keeps overview resource cards opt-in and node prices visible by default", () => {
+  it("概览资源卡默认关闭，费用默认公开", () => {
     expect(normalizeThemeSettings({})).toMatchObject({
       showOverviewOnline: true,
       showOverviewBandwidth: true,
@@ -110,7 +111,7 @@ describe("normalizeThemeSettings", () => {
       showOverviewAsset: true,
       showOverviewMemory: false,
       showOverviewDisk: false,
-      showNodePrice: true,
+      showCostsToGuests: true,
     });
     expect(
       normalizeThemeSettings({
@@ -120,7 +121,7 @@ describe("normalizeThemeSettings", () => {
         showOverviewAsset: false,
         showOverviewMemory: true,
         showOverviewDisk: true,
-        showNodePrice: false,
+        showCostsToGuests: false,
       }),
     ).toMatchObject({
       showOverviewOnline: false,
@@ -129,7 +130,7 @@ describe("normalizeThemeSettings", () => {
       showOverviewAsset: false,
       showOverviewMemory: true,
       showOverviewDisk: true,
-      showNodePrice: false,
+      showCostsToGuests: false,
     });
   });
 
@@ -189,16 +190,16 @@ describe("normalizeThemeSettings", () => {
     }
   });
 
-  it("访客资产访问与访客信息卡片分别保存，不影响现有入口开关", () => {
+  it("费用公开与访客信息卡片分别保存，不影响现有入口开关", () => {
     expect(normalizeThemeSettings({})).toMatchObject({
-      allowGuestCostSummary: true,
+      showCostsToGuests: true,
       visitorInfoCardEnabled: true,
     });
     expect(normalizeThemeSettings({
-      allowGuestCostSummary: false,
+      showCostsToGuests: false,
       visitorInfoCardEnabled: false,
     })).toMatchObject({
-      allowGuestCostSummary: false,
+      showCostsToGuests: false,
       visitorInfoCardEnabled: false,
       showCostSummary: true,
       showCostSummaryFloatingButton: true,
@@ -249,6 +250,43 @@ describe("normalizeThemeSettings", () => {
     const legacyDisabled = normalizeThemeSettings({ enableAdminButton: false });
     expect(shouldShowAdminEntry(legacyDisabled, false)).toBe(false);
     expect(shouldShowAdminEntry(legacyDisabled, true)).toBe(false);
+  });
+
+  it("费用关闭公开后，访客不可查看，登录用户仍可查看", () => {
+    const defaults = normalizeThemeSettings({});
+    expect(defaults.showCostsToGuests).toBe(true);
+    expect(canViewCosts(defaults, false)).toBe(true);
+
+    const privateCosts = normalizeThemeSettings({ showCostsToGuests: false });
+    expect(canViewCosts(privateCosts, false)).toBe(false);
+    expect(canViewCosts(privateCosts, true)).toBe(true);
+  });
+
+  it.each([
+    [{}, true],
+    [{ allowGuestCostSummary: true, showNodePrice: true }, true],
+    [{ allowGuestCostSummary: false }, false],
+    [{ showNodePrice: false }, false],
+    [{ allowGuestCostSummary: false, showNodePrice: true }, false],
+    [{ allowGuestCostSummary: true, showNodePrice: false }, false],
+    [{ allowGuestCostSummary: false, showNodePrice: false }, false],
+  ])("旧配置 %j 迁移后费用公开为 %s", (legacy, expected) => {
+    const resolved = normalizeThemeSettings(legacy);
+    expect(canViewCosts(resolved, false)).toBe(expected);
+    expect(canViewCosts(resolved, true)).toBe(true);
+    expect(resolved).not.toHaveProperty("allowGuestCostSummary");
+    expect(resolved).not.toHaveProperty("showNodePrice");
+    expect(normalizeThemeSettings({ ...resolved }).showCostsToGuests).toBe(expected);
+  });
+
+  it.each([true, false])("显式的新开关 %s 优先于残留的旧配置", (showCostsToGuests) => {
+    const resolved = normalizeThemeSettings({
+      showCostsToGuests,
+      allowGuestCostSummary: !showCostsToGuests,
+      showNodePrice: !showCostsToGuests,
+    });
+    expect(canViewCosts(resolved, false)).toBe(showCostsToGuests);
+    expect(canViewCosts(resolved, true)).toBe(true);
   });
 
   it("parses hiddenNodes from a delimited string and dedupes", () => {

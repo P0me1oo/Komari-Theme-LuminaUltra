@@ -8,7 +8,7 @@ describe("资产入口与页面访问", () => {
   });
 
   it("关闭访客访问后只允许已确认登录的用户查看", () => {
-    const settings = normalizeThemeSettings({ allowGuestCostSummary: false });
+    const settings = normalizeThemeSettings({ showCostsToGuests: false });
     expect(canAccessAssets(settings, false)).toBe(false);
     expect(canAccessAssets(settings, true)).toBe(true);
   });
@@ -17,11 +17,11 @@ describe("资产入口与页面访问", () => {
     const settings = normalizeThemeSettings({
       showCostSummary: false,
       showCostSummaryFloatingButton: true,
-      allowGuestCostSummary: false,
+      showCostsToGuests: false,
     });
     expect(canAccessAssets(settings, false)).toBe(false);
     expect(canAccessAssets(settings, true)).toBe(true);
-    expect(canAccessAssets({ ...settings, allowGuestCostSummary: true }, false)).toBe(true);
+    expect(canAccessAssets({ ...settings, showCostsToGuests: true }, false)).toBe(true);
   });
 
   it("两个入口都关闭时保持资产页不可访问的原有规则", () => {

@@ -12,6 +12,7 @@ import { useThemeSettings } from "@/hooks/useThemeSettings";
 import type { HomepagePingDisplayLine, HomepagePingLine } from "@/types/komari";
 import { formatRenewalPrice } from "@/utils/billing";
 import { getExpireTextColor } from "@/utils/expireStatus";
+import { getTrafficResetDisplay } from "@/utils/trafficReset";
 import {
   formatBytes,
   formatByteRate,
@@ -176,6 +177,7 @@ export function useNodeCardModel(
       subtitle: joinDisplayParts(subtitleParts),
       expire: formatExpireDays(meta.expired_at, now),
       expireColor: getExpireTextColor(meta.expired_at, now),
+      trafficReset: getTrafficResetDisplay(meta.expired_at, now),
       renewalPrice: formatRenewalPrice(meta),
       osName: resolveOsInfo(meta.os).name,
       loadBaseline: meta.cpu_cores > 0 ? meta.cpu_cores : 4,

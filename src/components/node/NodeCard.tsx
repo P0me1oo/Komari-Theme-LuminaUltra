@@ -13,7 +13,6 @@ import {
   Calendar,
   RefreshCw,
   CircleDollarSign,
-  Database,
   Network,
 } from "lucide-react";
 import { useNodeCardModel } from "@/hooks/useNodeCardModel";
@@ -33,6 +32,8 @@ import { LatencyBars } from "./LatencyBars";
 import { QualityBars } from "./QualityBars";
 import { CanvasStrip, mixSrgbTowardWhite, safeCanvasColor } from "./CanvasStrip";
 import { NodeTodayTrafficPopover } from "./NodeTodayTrafficPopover";
+import { TrafficQuotaLabel } from "./TrafficQuotaLabel";
+import type { TrafficResetDisplay } from "@/utils/trafficReset";
 import {
   joinTagTitle,
   nodeDetailLinkLabels,
@@ -54,9 +55,11 @@ type DisplayTag = { label: string; color: string };
 export const NodeCard = memo(function NodeCard({
   uuid,
   showTodayTraffic = true,
+  showCosts = true,
 }: {
   uuid: string;
   showTodayTraffic?: boolean;
+  showCosts?: boolean;
 }) {
   const { resolvedAppearance } = usePreferences();
   // 自定义配色改动时 version 自增，拼进 redrawKey 让 canvas 进度条即时重画（含离线静态卡）。
@@ -78,6 +81,7 @@ export const NodeCard = memo(function NodeCard({
   const {
     node,
     traffic,
+    trafficReset,
     trafficTrend,
     ping,
     pingBuckets,
@@ -102,7 +106,6 @@ export const NodeCard = memo(function NodeCard({
     osName,
   } = model;
   const showConnections = themeSettings.isReady && themeSettings.showConnections;
-  const showNodePrice = themeSettings.isReady && themeSettings.showNodePrice;
 
   return (
     <article
@@ -138,6 +141,7 @@ export const NodeCard = memo(function NodeCard({
             remainingLabel={traffic.remainingLabel}
             detail={traffic.detail}
             typeLabel={traffic.typeLabel}
+            reset={trafficReset}
           />
 
           {showConnections && (
@@ -183,7 +187,7 @@ export const NodeCard = memo(function NodeCard({
           expireColor={expireColor}
           uptime={uptime}
           footerTags={footerTags}
-          renewalPrice={showNodePrice ? renewalPrice : null}
+          renewalPrice={showCosts ? renewalPrice : null}
         />
       </div>
     </article>
@@ -378,11 +382,13 @@ const NodeTrafficQuota = memo(function NodeTrafficQuota({
   remainingLabel,
   detail,
   typeLabel,
+  reset,
 }: {
   litCount: number;
   remainingLabel: string;
   detail: string;
   typeLabel: string;
+  reset: TrafficResetDisplay | null;
 }) {
   return (
     <div
@@ -390,11 +396,7 @@ const NodeTrafficQuota = memo(function NodeTrafficQuota({
       title={`流量阈值 · ${typeLabel}`}
     >
       <div className="traffic-quota-head">
-        <span className="traffic-quota-label">
-          <Database size={13} strokeWidth={2} />
-          <span>剩余流量</span>
-          <strong className="traffic-quota-remain">{remainingLabel}</strong>
-        </span>
+        <TrafficQuotaLabel remainingLabel={remainingLabel} reset={reset} />
         <span className="traffic-quota-usage">{detail}</span>
       </div>
       <div className="traffic-quota-track" aria-hidden>

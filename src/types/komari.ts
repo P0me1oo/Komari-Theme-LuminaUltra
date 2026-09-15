@@ -132,8 +132,10 @@ export interface ThemeSettings {
   enableHomeSort?: boolean;
   homeSortField?: "default" | "name" | "speed" | "traffic" | "price" | "offline" | "load";
   homeSortDirection?: "asc" | "desc";
+  showCostsToGuests?: boolean;
   showCostSummary?: boolean;
   showCostSummaryFloatingButton?: boolean;
+  /** 旧版资产访客开关，仅用于迁移到 showCostsToGuests。 */
   allowGuestCostSummary?: boolean;
   showOverviewOnline?: boolean;
   showOverviewBandwidth?: boolean;
@@ -151,6 +153,7 @@ export interface ThemeSettings {
   compactShowTrafficTotal?: boolean;
   compactShowBilling?: boolean;
   compactShowUptime?: boolean;
+  /** 旧版卡片价格开关，仅用于迁移到 showCostsToGuests。 */
   showNodePrice?: boolean;
   showIpStackBadges?: boolean;
   showConnections?: boolean;

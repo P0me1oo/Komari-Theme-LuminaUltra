@@ -397,9 +397,11 @@ const MiniHealth = memo(function MiniHealth({
 export const MiniNodeCard = memo(function MiniNodeCard({
   uuid,
   showTodayTraffic = true,
+  showCosts = true,
 }: {
   uuid: string;
   showTodayTraffic?: boolean;
+  showCosts?: boolean;
 }) {
   const model = useNodeCardModel(uuid, {
     pingBucketCount: HEALTH_BAR_COUNT,
@@ -427,7 +429,6 @@ export const MiniNodeCard = memo(function MiniNodeCard({
     isOffline,
     osName,
   } = model;
-  const showNodePrice = themeSettings.isReady && themeSettings.showNodePrice;
   const showIpStackBadges = themeSettings.isReady && themeSettings.showIpStackBadges;
 
   return (
@@ -439,7 +440,7 @@ export const MiniNodeCard = memo(function MiniNodeCard({
       />
       <MiniChips
         tags={footerTags}
-        renewalPrice={showNodePrice ? renewalPrice : null}
+        renewalPrice={showCosts ? renewalPrice : null}
         ipv4={showIpStackBadges ? node.ipv4 : undefined}
         ipv6={showIpStackBadges ? node.ipv6 : undefined}
       />

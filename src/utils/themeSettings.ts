@@ -75,9 +75,9 @@ export interface ResolvedThemeSettings {
   enableHomeSort: boolean;
   homeSortField: HomeSortField;
   homeSortDirection: HomeSortDirection;
+  showCostsToGuests: boolean;
   showCostSummary: boolean;
   showCostSummaryFloatingButton: boolean;
-  allowGuestCostSummary: boolean;
   showOverviewOnline: boolean;
   showOverviewBandwidth: boolean;
   showOverviewTraffic: boolean;
@@ -94,7 +94,6 @@ export interface ResolvedThemeSettings {
   compactShowTrafficTotal: boolean;
   compactShowBilling: boolean;
   compactShowUptime: boolean;
-  showNodePrice: boolean;
   showIpStackBadges: boolean;
   showConnections: boolean;
   showTodayTrafficPopover: boolean;
@@ -137,9 +136,9 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   enableHomeSort: true,
   homeSortField: "default",
   homeSortDirection: HOME_SORT_NATURAL_DIRECTION.default,
+  showCostsToGuests: true,
   showCostSummary: true,
   showCostSummaryFloatingButton: true,
-  allowGuestCostSummary: true,
   showOverviewOnline: true,
   showOverviewBandwidth: true,
   showOverviewTraffic: true,
@@ -156,7 +155,6 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   compactShowTrafficTotal: true,
   compactShowBilling: true,
   compactShowUptime: true,
-  showNodePrice: true,
   showIpStackBadges: true,
   showConnections: false,
   showTodayTrafficPopover: true,
@@ -239,6 +237,13 @@ export function shouldShowAdminEntry(
   );
 }
 
+export function canViewCosts(
+  settings: Pick<ResolvedThemeSettings, "showCostsToGuests">,
+  loggedIn: boolean,
+) {
+  return loggedIn || settings.showCostsToGuests;
+}
+
 function normalizePlainText(value: unknown) {
   return typeof value === "string" ? value : "";
 }
@@ -310,9 +315,12 @@ export function normalizeThemeSettings(
     homeGroupOrder: normalizeHomeGroupOrder(settings?.homeGroupOrder),
     enableHomeSort: enabledUnlessFalse(settings?.enableHomeSort),
     ...normalizeHomeSortDefault(settings?.homeSortField, settings?.homeSortDirection),
+    // 新开关优先；旧配置任一费用开关关闭时，迁移为不向访客公开。
+    showCostsToGuests: typeof settings?.showCostsToGuests === "boolean"
+      ? settings.showCostsToGuests
+      : enabledUnlessFalse(settings?.allowGuestCostSummary) && enabledUnlessFalse(settings?.showNodePrice),
     showCostSummary: enabledUnlessFalse(settings?.showCostSummary),
     showCostSummaryFloatingButton: enabledUnlessFalse(settings?.showCostSummaryFloatingButton),
-    allowGuestCostSummary: enabledUnlessFalse(settings?.allowGuestCostSummary),
     showOverviewOnline: enabledUnlessFalse(settings?.showOverviewOnline),
     showOverviewBandwidth: enabledUnlessFalse(settings?.showOverviewBandwidth),
     showOverviewTraffic: enabledUnlessFalse(settings?.showOverviewTraffic),
@@ -329,7 +337,6 @@ export function normalizeThemeSettings(
     compactShowTrafficTotal: enabledUnlessFalse(settings?.compactShowTrafficTotal),
     compactShowBilling: enabledUnlessFalse(settings?.compactShowBilling),
     compactShowUptime: enabledUnlessFalse(settings?.compactShowUptime),
-    showNodePrice: enabledUnlessFalse(settings?.showNodePrice),
     showIpStackBadges: enabledUnlessFalse(settings?.showIpStackBadges),
     // 默认关闭(需手动开启):连接数是个小众指标,很多 agent 也不上报,所以只在显式启用时才显示。
     showConnections: settings?.showConnections === true,

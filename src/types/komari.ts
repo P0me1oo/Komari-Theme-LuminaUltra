@@ -132,10 +132,13 @@ export interface ThemeSettings {
   enableHomeSort?: boolean;
   homeSortField?: "default" | "name" | "speed" | "traffic" | "price" | "offline" | "load";
   homeSortDirection?: "asc" | "desc";
+  /** 费用可见范围：public 所有人可见、member 仅登录可见、hidden 所有人隐藏。 */
+  costVisibility?: "public" | "member" | "hidden";
+  /** 旧版访客费用开关，仅用于迁移到 costVisibility。 */
   showCostsToGuests?: boolean;
   showCostSummary?: boolean;
   showCostSummaryFloatingButton?: boolean;
-  /** 旧版资产访客开关，仅用于迁移到 showCostsToGuests。 */
+  /** 旧版资产访客开关，仅用于迁移到 costVisibility。 */
   allowGuestCostSummary?: boolean;
   showOverviewOnline?: boolean;
   showOverviewBandwidth?: boolean;
@@ -153,7 +156,7 @@ export interface ThemeSettings {
   compactShowTrafficTotal?: boolean;
   compactShowBilling?: boolean;
   compactShowUptime?: boolean;
-  /** 旧版卡片价格开关，仅用于迁移到 showCostsToGuests。 */
+  /** 旧版卡片价格开关，仅用于迁移到 costVisibility。 */
   showNodePrice?: boolean;
   showIpStackBadges?: boolean;
   showConnections?: boolean;

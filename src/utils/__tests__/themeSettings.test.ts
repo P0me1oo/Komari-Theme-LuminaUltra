@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_THEME_SETTINGS,
+  canViewCostDetails,
   canViewCosts,
   normalizeThemeSettings,
   shouldShowAdminEntry,
@@ -111,7 +112,7 @@ describe("normalizeThemeSettings", () => {
       showOverviewAsset: true,
       showOverviewMemory: false,
       showOverviewDisk: false,
-      showCostsToGuests: true,
+      costVisibility: "public",
     });
     expect(
       normalizeThemeSettings({
@@ -121,7 +122,7 @@ describe("normalizeThemeSettings", () => {
         showOverviewAsset: false,
         showOverviewMemory: true,
         showOverviewDisk: true,
-        showCostsToGuests: false,
+        costVisibility: "member",
       }),
     ).toMatchObject({
       showOverviewOnline: false,
@@ -130,7 +131,7 @@ describe("normalizeThemeSettings", () => {
       showOverviewAsset: false,
       showOverviewMemory: true,
       showOverviewDisk: true,
-      showCostsToGuests: false,
+      costVisibility: "member",
     });
   });
 
@@ -190,16 +191,16 @@ describe("normalizeThemeSettings", () => {
     }
   });
 
-  it("费用公开与访客信息卡片分别保存，不影响现有入口开关", () => {
+  it("费用可见范围与访客信息卡片分别保存，不影响现有入口开关", () => {
     expect(normalizeThemeSettings({})).toMatchObject({
-      showCostsToGuests: true,
+      costVisibility: "public",
       visitorInfoCardEnabled: true,
     });
     expect(normalizeThemeSettings({
-      showCostsToGuests: false,
+      costVisibility: "member",
       visitorInfoCardEnabled: false,
     })).toMatchObject({
-      showCostsToGuests: false,
+      costVisibility: "member",
       visitorInfoCardEnabled: false,
       showCostSummary: true,
       showCostSummaryFloatingButton: true,
@@ -252,42 +253,67 @@ describe("normalizeThemeSettings", () => {
     expect(shouldShowAdminEntry(legacyDisabled, true)).toBe(false);
   });
 
-  it("费用关闭公开后，访客不可查看，登录用户仍可查看", () => {
+  it("仅登录可见档下访客看不到费用，登录用户仍可查看", () => {
     const defaults = normalizeThemeSettings({});
-    expect(defaults.showCostsToGuests).toBe(true);
+    expect(defaults.costVisibility).toBe("public");
     expect(canViewCosts(defaults, false)).toBe(true);
 
-    const privateCosts = normalizeThemeSettings({ showCostsToGuests: false });
+    const privateCosts = normalizeThemeSettings({ costVisibility: "member" });
     expect(canViewCosts(privateCosts, false)).toBe(false);
     expect(canViewCosts(privateCosts, true)).toBe(true);
   });
 
+  it("全局隐藏档对所有人藏价格，资产明细仍留给登录用户", () => {
+    const hidden = normalizeThemeSettings({ costVisibility: "hidden" });
+    expect(canViewCosts(hidden, false)).toBe(false);
+    expect(canViewCosts(hidden, true)).toBe(false);
+    expect(canViewCostDetails(hidden, false)).toBe(false);
+    expect(canViewCostDetails(hidden, true)).toBe(true);
+  });
+
+  it("非法的可见范围回落到旧开关或默认公开", () => {
+    expect(normalizeThemeSettings({ costVisibility: "all" } as never).costVisibility).toBe("public");
+    expect(
+      normalizeThemeSettings({ costVisibility: "all", showCostsToGuests: false } as never)
+        .costVisibility,
+    ).toBe("member");
+  });
+
   it.each([
-    [{}, true],
-    [{ allowGuestCostSummary: true, showNodePrice: true }, true],
-    [{ allowGuestCostSummary: false }, false],
-    [{ showNodePrice: false }, false],
-    [{ allowGuestCostSummary: false, showNodePrice: true }, false],
-    [{ allowGuestCostSummary: true, showNodePrice: false }, false],
-    [{ allowGuestCostSummary: false, showNodePrice: false }, false],
-  ])("旧配置 %j 迁移后费用公开为 %s", (legacy, expected) => {
+    [{}, "public"],
+    [{ showCostsToGuests: true }, "public"],
+    [{ showCostsToGuests: false }, "member"],
+    [{ allowGuestCostSummary: true, showNodePrice: true }, "public"],
+    [{ allowGuestCostSummary: false }, "member"],
+    [{ showNodePrice: false }, "member"],
+    [{ allowGuestCostSummary: false, showNodePrice: true }, "member"],
+    [{ allowGuestCostSummary: true, showNodePrice: false }, "member"],
+    [{ allowGuestCostSummary: false, showNodePrice: false }, "member"],
+  ])("旧配置 %j 迁移后费用可见范围为 %s", (legacy, expected) => {
     const resolved = normalizeThemeSettings(legacy);
-    expect(canViewCosts(resolved, false)).toBe(expected);
+    expect(resolved.costVisibility).toBe(expected);
+    expect(canViewCosts(resolved, false)).toBe(expected === "public");
     expect(canViewCosts(resolved, true)).toBe(true);
     expect(resolved).not.toHaveProperty("allowGuestCostSummary");
     expect(resolved).not.toHaveProperty("showNodePrice");
-    expect(normalizeThemeSettings({ ...resolved }).showCostsToGuests).toBe(expected);
+    expect(resolved).not.toHaveProperty("showCostsToGuests");
+    expect(normalizeThemeSettings({ ...resolved }).costVisibility).toBe(expected);
   });
 
-  it.each([true, false])("显式的新开关 %s 优先于残留的旧配置", (showCostsToGuests) => {
-    const resolved = normalizeThemeSettings({
-      showCostsToGuests,
-      allowGuestCostSummary: !showCostsToGuests,
-      showNodePrice: !showCostsToGuests,
-    });
-    expect(canViewCosts(resolved, false)).toBe(showCostsToGuests);
-    expect(canViewCosts(resolved, true)).toBe(true);
-  });
+  it.each(["public", "member", "hidden"] as const)(
+    "显式的新字段 %s 优先于残留的旧配置",
+    (costVisibility) => {
+      const resolved = normalizeThemeSettings({
+        costVisibility,
+        showCostsToGuests: costVisibility !== "public",
+        allowGuestCostSummary: costVisibility !== "public",
+        showNodePrice: costVisibility !== "public",
+      });
+      expect(resolved.costVisibility).toBe(costVisibility);
+      expect(canViewCosts(resolved, false)).toBe(costVisibility === "public");
+      expect(canViewCosts(resolved, true)).toBe(costVisibility !== "hidden");
+    },
+  );
 
   it("parses hiddenNodes from a delimited string and dedupes", () => {
     expect(normalizeThemeSettings({}).hiddenNodes).toEqual([]);

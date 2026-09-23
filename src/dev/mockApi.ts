@@ -565,7 +565,7 @@ export function installDevMockApi() {
           showOverviewAsset: true,
           showOverviewMemory: false,
           showOverviewDisk: false,
-          showCostsToGuests: true,
+          costVisibility: "public",
           showOverviewRatings: true,
           showTrafficRating: true,
           showBandwidthRating: true,

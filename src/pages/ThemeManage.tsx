@@ -83,6 +83,7 @@ import {
   normalizeThemeSettings,
   type AmbientEffect,
   type BackgroundMediaType,
+  type CostVisibility,
   type ResolvedThemeSettings,
 } from "@/utils/themeSettings";
 import {
@@ -103,6 +104,19 @@ const NODE_VIEW_MODE_OPTIONS = [
   { value: "list", label: "列表", icon: List },
 ] as const;
 const MOBILE_VIEW_MODE_OPTIONS = NODE_VIEW_MODE_OPTIONS.filter((option) => option.value !== "list");
+const COST_VISIBILITY_OPTIONS: Array<{
+  value: CostVisibility;
+  label: string;
+  desc: string;
+}> = [
+  { value: "public", label: "所有人可见", desc: "访客和登录用户都能看到价格与资产金额。" },
+  { value: "member", label: "仅登录可见", desc: "未登录访客看不到价格，登录后正常显示。" },
+  {
+    value: "hidden",
+    label: "所有人隐藏",
+    desc: "包括管理员在内都不显示价格；管理员仍可从顶部快捷入口打开资产页核对明细。",
+  },
+];
 const BACKGROUND_MEDIA_TYPE_OPTIONS: Array<{
   value: BackgroundMediaType;
   label: string;
@@ -308,7 +322,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     enableHomeSort: settings.enableHomeSort,
     homeSortField: settings.homeSortField,
     homeSortDirection: settings.homeSortDirection,
-    showCostsToGuests: settings.showCostsToGuests,
+    costVisibility: settings.costVisibility,
     showCostSummary: settings.showCostSummary,
     showCostSummaryFloatingButton: settings.showCostSummaryFloatingButton,
     showOverviewOnline: settings.showOverviewOnline,
@@ -1088,6 +1102,8 @@ export function ThemeManage() {
   );
   const draftCostRateApiUrlInvalid =
     draft.costRateApiUrl.trim() !== "" && !isCostRateApiUrlValid(draft.costRateApiUrl.trim());
+  const costVisibilityDesc =
+    COST_VISIBILITY_OPTIONS.find((option) => option.value === draft.costVisibility)?.desc ?? "";
   const draftMultiPingInvalid =
     draft.enableHomepageMultiPing &&
     draft.homepageMultiPingTaskIds.length !== HOMEPAGE_MULTI_PING_TASK_COUNT;
@@ -1225,6 +1241,7 @@ export function ThemeManage() {
       delete nextSettings.homepagePingTask;
       delete nextSettings.allowGuestCostSummary;
       delete nextSettings.showNodePrice;
+      delete nextSettings.showCostsToGuests;
       await saveThemeSettings(config.theme, nextSettings);
       await queryClient.invalidateQueries({ queryKey: ["public"] });
       if (editVersionRef.current === submittedEditVersion) {
@@ -2118,18 +2135,35 @@ export function ThemeManage() {
       <InstancePanel
         kicker={<><span className="instance-panel-kicker-num">07</span>花费</>}
         title="服务器花费"
-        description="资产统计页（/assets）使用实时汇率计算年化总支出、月均支出与剩余价值；忽略列表中的节点不会计入费用。两个入口开关都关闭时，直接访问资产页也会跳回首页。"
+        description="资产统计页（/assets）使用实时汇率计算年化总支出、月均支出与剩余价值；忽略列表中的节点不会计入费用。费用可见范围决定谁能看到价格数字，到期时间不受它影响。两个入口开关都关闭时，直接访问资产页也会跳回首页。"
         aside={<CircleDollarSign size={16} />}
       >
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
           <div className="flex flex-col gap-3">
-            <ToggleRow
-              field="showCostsToGuests"
-              title="向未登录访客公开费用"
-              desc="关闭后，卡片价格、资产金额、资产页及入口、价格排序仅登录后可见；到期时间仍正常显示。"
-              checked={draft.showCostsToGuests}
-              onPatch={patch}
-            />
+            <div className="surface-inset flex min-w-0 flex-col gap-3 px-4 py-4">
+              <div>
+                <div className="text-[13px] font-semibold text-[var(--text-primary)]">
+                  费用可见范围
+                </div>
+                <div className="mt-1 text-[11px] text-[var(--text-tertiary)]">
+                  {costVisibilityDesc}
+                </div>
+              </div>
+              <div className="instance-segmented is-scrollable">
+                {COST_VISIBILITY_OPTIONS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    data-active={draft.costVisibility === value ? "true" : "false"}
+                    aria-pressed={draft.costVisibility === value}
+                    onClick={() => patch("costVisibility", value)}
+                    className="inline-flex items-center justify-center gap-2"
+                  >
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             <ToggleRow
               field="showCostSummary"
               title="显示资产页入口按钮"

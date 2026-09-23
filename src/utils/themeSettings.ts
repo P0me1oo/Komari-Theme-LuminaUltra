@@ -35,6 +35,18 @@ import {
 export type Appearance = "system" | "light" | "dark";
 export type NodeViewMode = "large" | "compact" | "mini" | "list";
 export type BackgroundMediaType = "image" | "video";
+/**
+ * 费用可见范围：
+ * - public 所有人可见；
+ * - member 仅登录用户可见（访客看不到价格）；
+ * - hidden 所有人都看不到价格，管理员仍可主动打开资产页核对明细。
+ */
+export type CostVisibility = "public" | "member" | "hidden";
+export const COST_VISIBILITY_VALUES: readonly CostVisibility[] = [
+  "public",
+  "member",
+  "hidden",
+];
 export type AmbientEffect =
   | "sakura"
   | "rain"
@@ -75,7 +87,7 @@ export interface ResolvedThemeSettings {
   enableHomeSort: boolean;
   homeSortField: HomeSortField;
   homeSortDirection: HomeSortDirection;
-  showCostsToGuests: boolean;
+  costVisibility: CostVisibility;
   showCostSummary: boolean;
   showCostSummaryFloatingButton: boolean;
   showOverviewOnline: boolean;
@@ -136,7 +148,7 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   enableHomeSort: true,
   homeSortField: "default",
   homeSortDirection: HOME_SORT_NATURAL_DIRECTION.default,
-  showCostsToGuests: true,
+  costVisibility: "public",
   showCostSummary: true,
   showCostSummaryFloatingButton: true,
   showOverviewOnline: true,
@@ -237,11 +249,25 @@ export function shouldShowAdminEntry(
   );
 }
 
+/** 价格数字是否显示。hidden 档对所有人（含管理员）都为 false。 */
 export function canViewCosts(
-  settings: Pick<ResolvedThemeSettings, "showCostsToGuests">,
+  settings: Pick<ResolvedThemeSettings, "costVisibility">,
   loggedIn: boolean,
 ) {
-  return loggedIn || settings.showCostsToGuests;
+  if (settings.costVisibility === "hidden") return false;
+  return loggedIn || settings.costVisibility === "public";
+}
+
+/**
+ * 是否允许打开资产明细（资产页与其入口）。hidden 档只藏前台价格，
+ * 登录管理员仍需要一个自查入口，所以这里按登录状态放行。
+ */
+export function canViewCostDetails(
+  settings: Pick<ResolvedThemeSettings, "costVisibility">,
+  loggedIn: boolean,
+) {
+  if (settings.costVisibility === "hidden") return loggedIn;
+  return canViewCosts(settings, loggedIn);
 }
 
 function normalizePlainText(value: unknown) {
@@ -272,6 +298,27 @@ function normalizeHomeSortDefault(
       ? direction
       : HOME_SORT_NATURAL_DIRECTION[homeSortField],
   };
+}
+
+export function isCostVisibility(value: unknown): value is CostVisibility {
+  return (
+    typeof value === "string" &&
+    COST_VISIBILITY_VALUES.includes(value as CostVisibility)
+  );
+}
+
+// 三档新字段优先;否则按旧开关迁移:showCostsToGuests 决定 public/member,
+// 再旧的两个开关任一关闭也视为仅登录可见。旧配置里不存在「对所有人隐藏」,不会迁出 hidden。
+function normalizeCostVisibility(
+  settings: (ThemeSettings & Record<string, unknown>) | null | undefined,
+): CostVisibility {
+  if (isCostVisibility(settings?.costVisibility)) return settings.costVisibility;
+  const guestsAllowed =
+    typeof settings?.showCostsToGuests === "boolean"
+      ? settings.showCostsToGuests
+      : enabledUnlessFalse(settings?.allowGuestCostSummary) &&
+        enabledUnlessFalse(settings?.showNodePrice);
+  return guestsAllowed ? "public" : "member";
 }
 
 export function normalizeThemeSettings(
@@ -315,10 +362,7 @@ export function normalizeThemeSettings(
     homeGroupOrder: normalizeHomeGroupOrder(settings?.homeGroupOrder),
     enableHomeSort: enabledUnlessFalse(settings?.enableHomeSort),
     ...normalizeHomeSortDefault(settings?.homeSortField, settings?.homeSortDirection),
-    // 新开关优先；旧配置任一费用开关关闭时，迁移为不向访客公开。
-    showCostsToGuests: typeof settings?.showCostsToGuests === "boolean"
-      ? settings.showCostsToGuests
-      : enabledUnlessFalse(settings?.allowGuestCostSummary) && enabledUnlessFalse(settings?.showNodePrice),
+    costVisibility: normalizeCostVisibility(settings),
     showCostSummary: enabledUnlessFalse(settings?.showCostSummary),
     showCostSummaryFloatingButton: enabledUnlessFalse(settings?.showCostSummaryFloatingButton),
     showOverviewOnline: enabledUnlessFalse(settings?.showOverviewOnline),

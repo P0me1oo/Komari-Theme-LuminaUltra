@@ -121,7 +121,8 @@ export function Assets() {
   const themeSettings = useThemeSettings();
   const auth = useAuth();
 
-  if (!themeSettings.isReady || (!themeSettings.showCostsToGuests && auth.isPending)) {
+  // 非「所有人可见」档下，入口规则依赖登录状态，先等确认再决定放行还是跳回首页。
+  if (!themeSettings.isReady || (themeSettings.costVisibility !== "public" && auth.isPending)) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <Spinner size={24} />

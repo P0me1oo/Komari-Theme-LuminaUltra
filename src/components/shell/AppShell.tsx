@@ -12,6 +12,7 @@ import { useSiteMetadata } from "@/hooks/useSiteMetadata";
 import { useMetricColorsSync } from "@/hooks/useMetricColors";
 import { useNodeStoreStatus } from "@/hooks/useNode";
 import { PwaPullToRefresh } from "./PwaPullToRefresh";
+import { NetworkInfoProvider } from "./NetworkInfoProvider";
 
 const VisitorInfoCard = lazy(() =>
   import("./VisitorInfoCard").then((module) => ({ default: module.VisitorInfoCard })),
@@ -74,7 +75,7 @@ export function AppShell() {
           ) : isPrivateVisitor ? (
             <PrivateSiteGate />
           ) : (
-            <Outlet />
+            <NetworkInfoProvider><Outlet /></NetworkInfoProvider>
           )}
         </div>
       </main>

@@ -1,4 +1,7 @@
 import type { NodeInfo } from "@/types/komari";
+import type { NetworkConfig } from "@/services/networkInfo";
+import { normalizeThemeSettings } from "@/utils/themeSettings";
+import { invertHomepagePingTaskBindings, resolveHomepageMultiPingTaskIds } from "@/utils/pingTasks";
 
 const GIB = 1024 ** 3;
 const TIB = 1024 ** 4;
@@ -440,13 +443,13 @@ function pingRecords(uuid?: string, taskId = 1) {
 }
 
 const pingTasks = [
-  { id: 1, name: "中国电信", target: "电信探针" },
-  { id: 2, name: "中国联通", target: "联通探针" },
-  { id: 3, name: "中国移动", target: "移动探针" },
+  { id: 1, name: "中国电信", target: "ct.example.com" },
+  { id: 2, name: "中国联通", target: "cu.example.com" },
+  { id: 3, name: "中国移动", target: "cm.example.com" },
   {
     id: 4,
     name: "KFC-JP",
-    target: "日本探针",
+    target: "jp.example.com",
     clients: nodes[0] ? [nodes[0].uuid] : [],
   },
 ].map((task, index) => ({
@@ -473,6 +476,31 @@ export function installDevMockApi() {
   // 保存后的主题设置驻留内存,让「保存 → /api/public refetch」链路在 dev 里闭环。
   const defaultTheme = "LuminaUltra";
   const savedThemeSettings: Record<string, Record<string, unknown>> = {};
+  const defaultPingSettings = {
+    homepagePingBindings: { "2": nodes.map((node) => node.uuid) },
+    enableHomepageMultiPing: new URLSearchParams(window.location.search).get("multiPing") === "1",
+    homepageMultiPingTaskIds: [1, 2, 3],
+    homepageMultiPingNodeTaskIds: {
+      ...(nodes[0] ? { [nodes[0].uuid]: [3, 2, 1] } : {}),
+      ...(nodes[1] ? { [nodes[1].uuid]: [1, 4, 3] } : {}),
+    },
+  };
+  function mockTargets(uuid: string) {
+    const settings = normalizeThemeSettings(savedThemeSettings[defaultTheme] ?? defaultPingSettings);
+    const multi = settings.enableHomepageMultiPing ? resolveHomepageMultiPingTaskIds(uuid, settings.homepageMultiPingTaskIds, settings.homepageMultiPingNodeTaskIds) : [];
+    const single = invertHomepagePingTaskBindings(settings.homepagePingBindings).get(uuid);
+    return [...new Set([...multi, ...(single ? [single] : [])])].flatMap((id) => {
+      const task = pingTasks.find((task) => task.id === id);
+      return task ? [{ task_id: id, task_name: task.name, region: "", family: 0, address: task.target,
+        carrier: id === 1 ? "ct" : id === 2 ? "cu" : id === 3 ? "cm" : null,
+        error: task.clients.includes(uuid) ? null : "探测点未在后台绑定此服务器" }] : [];
+    });
+  }
+  let networkConfig: NetworkConfig = {
+    enabled: true, ip_enabled: true, guest_visible: true, show_home: true, show_details: true,
+    ip_source: "ipinfo", ip_guest_visible: true, show_asn: true, show_organization: true, show_ip_type: true,
+    all_nodes: true, nodes: [], interval_minutes: 360, ip_interval_hours: 24, concurrency: 2, nexttrace_path: "nexttrace",
+  };
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
@@ -498,6 +526,55 @@ export function installDevMockApi() {
 
     if (url.origin !== window.location.origin || !url.pathname.startsWith("/api/")) {
       return nativeFetch(input, init);
+    }
+
+    if (url.pathname === "/api/public/lumina-network/v1/results") {
+      const routeVisible = adminMode || networkConfig.guest_visible;
+      const ipVisible = adminMode || networkConfig.ip_guest_visible;
+      if (!routeVisible && !ipVisible) return json({ available: false, nodes: [] });
+      return json({ available: true, independent_ip: true, homepage_targets: true, ip_available: ipVisible,
+        show_home: routeVisible && networkConfig.show_home, show_details: routeVisible && networkConfig.show_details,
+        show_asn: ipVisible && networkConfig.show_asn, show_organization: ipVisible && networkConfig.show_organization, show_ip_type: ipVisible && networkConfig.show_ip_type,
+        interval_minutes: networkConfig.interval_minutes,
+        nodes: nodes.filter((node) => adminMode || !node.hidden).map((node) => ({ uuid: node.uuid,
+          ips: ipVisible ? [{ family: 4, asn: "AS64500", organization: "示例运营商", type: "机房", source: "IPinfo（演示数据）", checked_at: new Date().toISOString(), stale: false, error: null }] : [],
+          routes: (routeVisible && (networkConfig.all_nodes || networkConfig.nodes.includes(node.uuid)) ? mockTargets(node.uuid) : []).map((target) => {
+            const network = target.carrier === "ct" ? { asn: "AS4809", name: "CN2" } : target.carrier === "cu" ? { asn: "AS9929", name: "联通9929" } : { asn: "AS58807", name: "CMIN2" };
+            const route_label = target.carrier === "ct" ? "CN2GIA" : target.carrier === "cu" ? "10099->9929" : target.carrier === "cm" ? "CMIN2" : null;
+            return { ...target, status: target.error ? "error" : "ok", checked_at: new Date().toISOString(), route_label, networks: [network], asns: ["AS64500", network.asn], reached: !target.error, running: false, stale: false,
+              ...(adminMode ? { hops: [{ ttl: 1, ip: "203.0.113.1", asn: network.asn, owner: "演示网络", location: "示例地区", rtt_ms: 12.5 }] } : {}) };
+          }),
+        })),
+      });
+    }
+    if (["/api/admin/lumina-network/v1/run", "/api/admin/lumina-network/v1/detect"].includes(url.pathname)) {
+      if (!adminMode) return json({ error: "请先登录管理员账号" }, { status: 403 });
+      const selected = nodes.filter((node) => networkConfig.all_nodes || networkConfig.nodes.includes(node.uuid));
+      if (!selected.length) return json({ error: "没有参与回程检测的节点，请选择节点或开启检测全部节点" }, { status: 400 });
+      const added = selected.reduce((sum, node) => sum + mockTargets(node.uuid).filter((target) => !target.error).length, 0);
+      if (!added) return json({ error: "请先在主页延迟检测中选择可用探测点" }, { status: 400 });
+      return json({ added, queued: added, running: 0, ip_added: 0, ip_queued: 0 }, { status: 202 });
+    }
+    if (url.pathname === "/api/admin/lumina-network/v1/ip-refresh") {
+      if (!adminMode) return json({ error: "请先登录管理员账号" }, { status: 403 });
+      const ipAdded = new Set(nodes.flatMap((node) => [node.ipv4, node.ipv6]).filter(Boolean)).size;
+      return json({ added: 0, queued: 0, running: 0, ip_added: ipAdded, ip_queued: ipAdded }, { status: 202 });
+    }
+    if (url.pathname === "/api/admin/lumina-network/v1/validate") {
+      return adminMode ? json({ ok: true, independent_ip: true, homepage_targets: true }) : json({ error: "请先登录" }, { status: 403 });
+    }
+    if (url.pathname === "/api/rpc2" && request.method === "POST") {
+      const payload = await request.clone().json();
+      if (["admin:getPluginConfiguration", "admin:setPluginConfiguration"].includes(payload.method)) {
+        if (!adminMode) return json({ error: { message: "请先登录" } }, { status: 403 });
+        if (payload.method === "admin:setPluginConfiguration") {
+          networkConfig = {
+            ...payload.params.data,
+            nodes: typeof payload.params.data.nodes === "string" ? JSON.parse(payload.params.data.nodes) : [],
+          };
+        }
+        return json({ jsonrpc: "2.0", id: payload.id, result: { data: networkConfig } });
+      }
     }
 
     if (url.pathname === "/api/me") {
@@ -572,14 +649,7 @@ export function installDevMockApi() {
           showAssetRating: true,
           showPingChart: true,
           // 单任务刻意和三网首项不同，便于回归验证列表没有误读全局三网数据。
-          homepagePingBindings: { "2": nodes.map((node) => node.uuid) },
-          enableHomepageMultiPing:
-            new URLSearchParams(window.location.search).get("multiPing") === "1",
-          homepageMultiPingTaskIds: [1, 2, 3],
-          homepageMultiPingNodeTaskIds: {
-            ...(nodes[0] ? { [nodes[0].uuid]: [3, 2, 1] } : {}),
-            ...(nodes[1] ? { [nodes[1].uuid]: [1, 4, 3] } : {}),
-          },
+          ...defaultPingSettings,
         },
       });
     }

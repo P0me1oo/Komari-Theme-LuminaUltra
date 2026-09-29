@@ -28,6 +28,8 @@ import {
 import { clsx } from "clsx";
 import { InstancePanel } from "@/components/instance/InstancePanel";
 import { MultiPingNodeConfigPanel } from "@/components/theme/MultiPingNodeConfigPanel";
+import { NetworkSettings } from "@/components/theme/NetworkSettings";
+import { getNetworkConfig, saveNetworkConfig, type NetworkConfig } from "@/services/networkInfo";
 import { Spinner } from "@/components/ui/Spinner";
 import { Flag } from "@/components/ui/Flag";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
@@ -837,6 +839,17 @@ export function ThemeManage() {
   const [accessRevoked, setAccessRevoked] = useState(false);
   const savingDraftRef = useRef<ThemeDraft | null>(null);
   const editVersionRef = useRef(0);
+  const networkFormRef = useRef<HTMLFormElement>(null);
+  const networkQuery = useQuery({ queryKey: ["network-config"], queryFn: getNetworkConfig, retry: false });
+  const [networkDraft, setNetworkDraft] = useState<NetworkConfig | null>(null);
+  const networkConfig = networkDraft || networkQuery.data;
+  const networkDirty = networkDraft !== null && JSON.stringify(networkDraft) !== JSON.stringify(networkQuery.data);
+  const patchNetworkConfig = (next: NetworkConfig) => {
+    editVersionRef.current += 1;
+    setNetworkDraft(next);
+    setMessage(null);
+    setError(null);
+  };
 
   // 单字段更新收口,所有表单控件都走它。值未变时原样返回 prev,保留旧的独立 useState
   // 在同值 set 时不触发重渲染的行为。
@@ -1175,10 +1188,11 @@ export function ThemeManage() {
   // 标为 dirty(重置可用),而保存按钮再额外按合法性把关(见下文)。
   const costRateApiUrlDirty =
     draft.costRateApiUrl.trim() !== sourceThemeSettings.costRateApiUrl;
-  const isDirty =
+  const themeDirty =
     draftSignature !== sourceSignature ||
     costRateApiUrlDirty ||
     videoInputInvalid;
+  const isDirty = themeDirty || networkDirty;
 
   // 用户重新编辑后清掉「已保存」提示,避免过期的成功提示和 dirty 表单并存。
   useEffect(() => {
@@ -1190,10 +1204,10 @@ export function ThemeManage() {
   useEffect(() => {
     if (!config) return;
     if (lastSeededSignatureRef.current === sourceSignature) return;
-    if (lastSeededSignatureRef.current !== null && isDirty) return;
+    if (lastSeededSignatureRef.current !== null && themeDirty) return;
     lastSeededSignatureRef.current = sourceSignature;
     seedDrafts(sourceThemeSettings);
-  }, [config, isDirty, sourceSignature, sourceThemeSettings, seedDrafts]);
+  }, [config, themeDirty, sourceSignature, sourceThemeSettings, seedDrafts]);
 
   const assignedNodeCount = useMemo(
     () =>
@@ -1228,24 +1242,37 @@ export function ThemeManage() {
     ) {
       return false;
     }
+    if (networkDirty && !networkFormRef.current?.reportValidity()) return false;
     const submittedEditVersion = editVersionRef.current;
     savingDraftRef.current = draft;
     setSaving(true);
     setError(null);
     setMessage(null);
+    let networkSaved = false;
     try {
-      const nextSettings: ThemeSettings & Record<string, unknown> = {
-        ...(config.theme_settings ?? {}),
-        ...draftThemeSettings,
-      };
-      delete nextSettings.homepagePingTask;
-      delete nextSettings.allowGuestCostSummary;
-      delete nextSettings.showNodePrice;
-      delete nextSettings.showCostsToGuests;
-      await saveThemeSettings(config.theme, nextSettings);
-      await queryClient.invalidateQueries({ queryKey: ["public"] });
+      // 网络配置先校验并保存；失败时不提交其他设置，成功的部分不在重试时重复写入。
+      if (networkDirty && networkConfig) {
+        await saveNetworkConfig(networkConfig);
+        queryClient.setQueryData(["network-config"], networkConfig);
+        setNetworkDraft(null);
+        networkSaved = true;
+        void queryClient.invalidateQueries({ queryKey: ["network-info"] });
+      }
+      if (themeDirty) {
+        const nextSettings: ThemeSettings & Record<string, unknown> = {
+          ...(config.theme_settings ?? {}),
+          ...draftThemeSettings,
+        };
+        delete nextSettings.homepagePingTask;
+        delete nextSettings.allowGuestCostSummary;
+        delete nextSettings.showNodePrice;
+        delete nextSettings.showCostsToGuests;
+        await saveThemeSettings(config.theme, nextSettings);
+        await queryClient.invalidateQueries({ queryKey: ["public"] });
+        void queryClient.invalidateQueries({ queryKey: ["network-info"] });
+      }
       if (editVersionRef.current === submittedEditVersion) {
-        setMessage("主题设置已保存");
+        setMessage("设置已保存");
         return true;
       }
       return false;
@@ -1257,7 +1284,8 @@ export function ThemeManage() {
         setAccessRevoked(true);
         return false;
       }
-      setError(saveError instanceof Error ? saveError.message : "保存失败");
+      const reason = saveError instanceof Error ? saveError.message : "保存失败";
+      setError(networkSaved ? `网络设置已保存，其他主题设置保存失败：${reason}` : reason);
       return false;
     } finally {
       savingDraftRef.current = null;
@@ -1267,6 +1295,7 @@ export function ThemeManage() {
 
   const handleReset = () => {
     seedDrafts(sourceThemeSettings);
+    setNetworkDraft(null);
     setMessage(null);
     setError(null);
   };
@@ -1406,6 +1435,21 @@ export function ThemeManage() {
           </dl>
         </div>
       </header>
+
+      <NetworkSettings
+        config={networkConfig}
+        loading={networkQuery.isPending}
+        loadError={networkQuery.error}
+        clients={sortedClients}
+        clientsLoading={clientsLoading}
+        clientsError={clientsError}
+        saving={saving}
+        dirty={isDirty}
+        formRef={networkFormRef}
+        onChange={patchNetworkConfig}
+        onReload={() => { void networkQuery.refetch(); }}
+        onSave={handleSave}
+      />
 
       {(message || error || adminError) && (
         <div className="flex flex-col gap-3">
@@ -1824,7 +1868,7 @@ export function ThemeManage() {
           />
         </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)]">
+        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)]">
           <div>
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <span className="text-[13px] font-medium text-[var(--text-primary)]">默认排序维度</span>

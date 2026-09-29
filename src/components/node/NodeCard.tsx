@@ -1,5 +1,6 @@
 import { memo, useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { SingleNetworkRouteLabel } from "@/components/node/NetworkRouteLabel";
 import {
   Cpu,
   Gauge,
@@ -40,7 +41,7 @@ import {
   pingEmptyLabels,
   TRAFFIC_SLIVER_RATIO,
 } from "./nodeCardShared";
-import { IpStackBadges } from "./IpStackBadges";
+import { NodeIPBadges } from "./NodeIPBadges";
 import { HealthBucketTooltip } from "./HealthBucketTooltip";
 import { MultiPingStatus } from "./MultiPingStatus";
 import { formatHealthBucketTooltip } from "./pingBucketText";
@@ -169,6 +170,7 @@ export const NodeCard = memo(function NodeCard({
             />
           ) : (
             <NodeHealthSection
+              uuid={uuid}
               ping={ping}
               pingBuckets={pingBuckets}
               redrawKey={redrawKey}
@@ -208,7 +210,6 @@ function NodeCardHeader({
   showIpStackBadges: boolean;
 }) {
   const detailLabels = nodeDetailLinkLabels(node.name, osName);
-  const hasIpStackBadges = showIpStackBadges && Boolean(node.ipv4 || node.ipv6);
   return (
     <header className="server-card-header">
       <div className="server-card-title-block">
@@ -222,16 +223,14 @@ function NodeCardHeader({
             {node.name}
           </Link>
         </div>
-        {(subtitle || hasIpStackBadges) && (
-          <div className="server-card-subtitle-row">
-            {subtitle && (
-              <span className="server-card-subtitle" title={subtitle}>
-                {subtitle}
-              </span>
-            )}
-            {hasIpStackBadges && <IpStackBadges ipv4={node.ipv4} ipv6={node.ipv6} />}
-          </div>
-        )}
+        <div className="server-card-subtitle-row">
+          {subtitle && (
+            <span className="server-card-subtitle" title={subtitle}>
+              {subtitle}
+            </span>
+          )}
+          <NodeIPBadges uuid={node.uuid} ipv4={node.ipv4} ipv6={node.ipv6} showStack={showIpStackBadges} />
+        </div>
       </div>
       <div className="server-card-actions">
         {showTodayTraffic && <NodeTodayTrafficPopover uuid={node.uuid} />}
@@ -420,6 +419,7 @@ const NodeTrafficQuota = memo(function NodeTrafficQuota({
 // ~60s 才刷新一次 —— 所以 latency/loss 柱子这棵子树能跳过每个 tick 的工作。
 // hover 状态收在本段内(两图互斥),悬停时不再重渲整张卡。
 const NodeHealthSection = memo(function NodeHealthSection({
+  uuid,
   ping,
   pingBuckets,
   redrawKey,
@@ -430,6 +430,7 @@ const NodeHealthSection = memo(function NodeHealthSection({
   latencyColor,
   lossColor,
 }: {
+  uuid: string;
   ping: PingOverviewItem;
   pingBuckets: PingOverviewBucket[];
   redrawKey: string;
@@ -514,10 +515,12 @@ const NodeHealthSection = memo(function NodeHealthSection({
       </div>
       <div className="server-health-block">
         <div className="server-health-head">
-          <div className="server-health-label">
-            <Unplug size={13} strokeWidth={2} />
-            <span>丢包率</span>
-          </div>
+          <SingleNetworkRouteLabel uuid={uuid}>
+            <div className="server-health-label">
+              <Unplug size={13} strokeWidth={2} />
+              <span>丢包率</span>
+            </div>
+          </SingleNetworkRouteLabel>
           <span
             className="server-health-value tabular"
             style={{ color: lossColor }}

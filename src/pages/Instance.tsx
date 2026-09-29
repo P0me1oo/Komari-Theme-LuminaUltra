@@ -1,6 +1,7 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
+import { NetworkPanel } from "@/components/instance/NetworkPanel";
 import "uplot/dist/uPlot.min.css";
 import { InstanceDetails } from "@/components/instance/InstanceDetails";
 import { PingChart } from "@/components/instance/PingChart";
@@ -160,6 +161,7 @@ export function Instance() {
         返回
       </Link>
       <InstanceDetails uuid={uuid} onNodeReady={alignCharts} />
+      <NetworkPanel uuid={uuid} />
       <div ref={chartControlsRef} className="instance-chart-controls">
         <div className="instance-segmented">
           <button

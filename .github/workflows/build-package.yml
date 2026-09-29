@@ -34,8 +34,14 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Test network plugin
+        run: npm run test:network
+
       - name: Build package
         run: npm run package
+
+      - name: Build network plugin package
+        run: npm run package:network
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
@@ -43,6 +49,7 @@ jobs:
           name: Komari-Theme-LuminaUltra-package
           path: |
             Komari-Theme-LuminaUltra-v*.zip
+            Lumina-Network-Plugin-v*.zip
             preview.png
 
       - name: Resolve release notes
@@ -63,5 +70,6 @@ jobs:
         with:
           files: |
             Komari-Theme-LuminaUltra-v*.zip
+            Lumina-Network-Plugin-v*.zip
             preview.png
           body_path: ${{ steps.release-notes.outputs.path }}

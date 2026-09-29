@@ -1,7 +1,7 @@
 {
   "name": "komari-theme-luminaultra",
   "private": true,
-  "version": "1.9.0",
+  "version": "1.14.1",
   "type": "module",
   "description": "Komari-Theme-LuminaUltra",
   "author": "P0me1oo",
@@ -13,6 +13,8 @@
     "lint": "eslint .",
     "typecheck": "tsc -b",
     "test": "vitest run",
+    "test:network": "node --test network-plugin/tests/*.node.cjs",
+    "package:network": "node scripts/package-zip.mjs --network-plugin",
     "test:watch": "vitest",
     "release": "node scripts/release.mjs"
   },

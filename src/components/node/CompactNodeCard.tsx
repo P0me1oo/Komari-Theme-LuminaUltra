@@ -1,6 +1,7 @@
 import { memo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { SingleNetworkRouteLabel } from "@/components/node/NetworkRouteLabel";
 import {
   ArrowDown,
   ArrowUp,
@@ -35,7 +36,7 @@ import {
   pingEmptyLabels,
   TRAFFIC_SLIVER_RATIO,
 } from "./nodeCardShared";
-import { IpStackBadges } from "./IpStackBadges";
+import { NodeIPBadges } from "./NodeIPBadges";
 import { NodeTodayTrafficPopover } from "./NodeTodayTrafficPopover";
 import { TrafficQuotaLabel } from "./TrafficQuotaLabel";
 import type { TrafficResetDisplay } from "@/utils/trafficReset";
@@ -288,6 +289,7 @@ function CompactHealthItem({
   value,
   unit,
   color,
+  heading,
   children,
 }: {
   icon: ReactNode;
@@ -295,15 +297,16 @@ function CompactHealthItem({
   value: string;
   unit?: string;
   color: string;
+  heading?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className="compact-node-health-item">
       <div className="compact-node-health-head">
-        <span className="compact-node-health-label">
+        {heading ?? <span className="compact-node-health-label">
           {icon}
           {label}
-        </span>
+        </span>}
         <strong className="compact-node-health-value tabular" style={{ color }}>
           {value}
           {unit && <small>{unit}</small>}
@@ -358,15 +361,18 @@ function CompactNodeHeader({
 function CompactNodeChips({
   subtitle,
   tags,
+  uuid,
   ipv4,
   ipv6,
+  showStack,
 }: {
   subtitle: string;
   tags: CompactTag[];
+  uuid: string;
   ipv4?: string | null;
   ipv6?: string | null;
+  showStack: boolean;
 }) {
-  if (!subtitle && tags.length === 0 && !ipv4 && !ipv6) return null;
   // 完整 tag 列表挂在 lane 的 tooltip 上;chip 不带自己的 title,hover 会穿透到 lane 上 ——
   // 被裁剪 lane 折行挤出去的 tag 就靠这个保持可见,不用显示"+N"角标。
   const tagTitle = joinTagTitle(tags);
@@ -378,7 +384,7 @@ function CompactNodeChips({
           {subtitle}
         </span>
       )}
-      <IpStackBadges ipv4={ipv4} ipv6={ipv6} />
+      <NodeIPBadges uuid={uuid} ipv4={ipv4} ipv6={ipv6} showStack={showStack} />
       {tags.length > 0 && (
         <div className="compact-node-tag-lane" title={tagTitle}>
           {tags.map((tag, index) => (
@@ -614,6 +620,7 @@ function CompactTrafficBar({
 // ~60s 才刷新一次),所以在 ping 数据真正变化前,跳过重渲染 latency/loss HealthBars
 // 这棵子树 —— 它是每 tick DOM 开销的大头。
 const CompactNodeHealth = memo(function CompactNodeHealth({
+  uuid,
   ping,
   pingBuckets,
   latencyColor,
@@ -622,6 +629,7 @@ const CompactNodeHealth = memo(function CompactNodeHealth({
   pingLoading,
   pingError,
 }: {
+  uuid: string;
   ping: PingOverviewItem;
   pingBuckets: PingOverviewBucket[];
   latencyColor: string;
@@ -658,6 +666,7 @@ const CompactNodeHealth = memo(function CompactNodeHealth({
       <CompactHealthItem
         icon={<Unplug size={12} />}
         label="丢包"
+        heading={<SingleNetworkRouteLabel uuid={uuid}><span className="compact-node-health-label"><Unplug size={12} />丢包</span></SingleNetworkRouteLabel>}
         value={ping.loss != null ? ping.loss.toFixed(1) : emptyText}
         unit={ping.loss != null ? "%" : undefined}
         color={lossColor}
@@ -730,8 +739,10 @@ export const CompactNodeCard = memo(function CompactNodeCard({
       <CompactNodeChips
         subtitle={subtitle}
         tags={footerTags}
-        ipv4={showIpStackBadges ? node.ipv4 : undefined}
-        ipv6={showIpStackBadges ? node.ipv6 : undefined}
+        uuid={uuid}
+        ipv4={node.ipv4}
+        ipv6={node.ipv6}
+        showStack={showIpStackBadges}
       />
       <CompactNodeVitals node={node} loadFraction={loadFraction} />
       <CompactNodeInfoStrip
@@ -756,6 +767,7 @@ export const CompactNodeCard = memo(function CompactNodeCard({
         />
       ) : (
         <CompactNodeHealth
+          uuid={uuid}
           ping={ping}
           pingBuckets={pingBuckets}
           latencyColor={latencyColor}

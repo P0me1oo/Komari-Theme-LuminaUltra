@@ -6,9 +6,12 @@ import zlib from "node:zlib";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
-const manifest = JSON.parse(readFileSync(resolve(root, "komari-theme.json"), "utf8"));
+const isNetworkPlugin = process.argv.includes("--network-plugin");
+const sourceRoot = isNetworkPlugin ? resolve(root, "network-plugin") : root;
+const manifestName = isNetworkPlugin ? "komari-plugin.json" : "komari-theme.json";
+const manifest = JSON.parse(readFileSync(resolve(sourceRoot, manifestName), "utf8"));
 const version = manifest.version ?? "0.0.0";
-const packageName = manifest.name ?? "Komari-Theme-LuminaUltra";
+const packageName = isNetworkPlugin ? "Lumina-Network-Plugin" : manifest.name ?? "Komari-Theme-LuminaUltra";
 const outPath = resolve(root, `${packageName}-v${version}.zip`);
 const ZIP_VERSION = 20;
 const UTF8_FLAG = 0x0800;
@@ -48,7 +51,7 @@ function walk(dir, base = dir) {
 const distDir = resolve(root, "dist");
 const previewPath = resolve(root, "preview.png");
 
-for (const [path, hint] of [
+for (const [path, hint] of isNetworkPlugin ? [] : [
   [previewPath, "run `node scripts/make-preview.mjs` (or `npm run package`) first"],
   [distDir, "run `npm run build` (or `npm run package`) first"],
 ]) {
@@ -58,7 +61,7 @@ for (const [path, hint] of [
   }
 }
 
-const entries = [
+const entries = isNetworkPlugin ? ["komari-plugin.json", "script.js", "core.cjs", "route.cjs", "ping-targets.cjs", "ip.cjs", "README.md"].map((path) => ({ path, full: resolve(sourceRoot, path) })) : [
   { path: "komari-theme.json", full: resolve(root, "komari-theme.json") },
   { path: "preview.png", full: previewPath },
   ...walk(distDir, root),

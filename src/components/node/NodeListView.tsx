@@ -1,11 +1,14 @@
 import { memo, useCallback, useState } from "react";
 import { Link } from "react-router-dom";
+import { NetworkSummary } from "@/components/node/NetworkSummary";
+import { NodeIPBadges } from "@/components/node/NodeIPBadges";
 import { ArrowDown, ArrowUp, CircleDollarSign } from "lucide-react";
 import { clsx } from "clsx";
 import { Flag } from "@/components/ui/Flag";
 import { OsLogo } from "@/components/ui/OsLogo";
 import { useNodeCardModel } from "@/hooks/useNodeCardModel";
 import { usePreferences } from "@/hooks/usePreferences";
+import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { useMetricColorsVersion } from "@/hooks/useMetricColors";
 import { formatBytes } from "@/utils/format";
 import { speedRateColor } from "@/utils/metricTone";
@@ -226,6 +229,7 @@ function ListLatency({
 
 const NodeRow = memo(function NodeRow({ uuid, showCosts }: { uuid: string; showCosts: boolean }) {
   const { resolvedAppearance } = usePreferences();
+  const themeSettings = useThemeSettings();
   const colorsVersion = useMetricColorsVersion();
   const redrawKey = `${resolvedAppearance}:${colorsVersion}`;
   const model = useNodeCardModel(uuid, {
@@ -294,6 +298,8 @@ const NodeRow = memo(function NodeRow({ uuid, showCosts }: { uuid: string; showC
               {node.name}
             </span>
           </div>
+          <NodeIPBadges uuid={uuid} ipv4={node.ipv4} ipv6={node.ipv6} showStack={themeSettings.isReady && themeSettings.showIpStackBadges} />
+          <NetworkSummary uuid={uuid} />
           {((showCosts && renewalPrice) || footerTags.length > 0) && (
             <div className="node-list-chips" title={footerTags.length > 0 ? joinTagTitle(footerTags) : undefined}>
               {showCosts && renewalPrice && (

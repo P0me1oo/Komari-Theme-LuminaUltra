@@ -1,0 +1,31 @@
+{
+  "name": "Lumina 网络识别",
+  "short": "lumina-network",
+  "description": "独立查询全部节点的 IPinfo 标签，跟随主页延迟探测点检测回程。",
+  "version": "0.5.1",
+  "author": "P0me1oo",
+  "komari": ">=1.4.3",
+  "entry": "script.js",
+  "permissions": { "node": true, "allowSystemRPC": true, "allowRoutes": true },
+  "configuration": {
+    "type": "managed",
+    "data": [
+      { "key": "ip_enabled", "name": "IP 信息：自动查询全部节点", "type": "switch", "default": true },
+      { "key": "ip_source", "name": "IP 信息：数据来源", "type": "select", "options": "ipinfo", "default": "ipinfo" },
+      { "key": "show_asn", "name": "IP 标签：显示 ASN", "type": "switch", "default": true },
+      { "key": "show_organization", "name": "IP 标签：显示运营商 / 机构", "type": "switch", "default": true },
+      { "key": "show_ip_type", "name": "IP 标签：显示 IP 类型", "type": "switch", "default": true },
+      { "key": "ip_guest_visible", "name": "IP 信息：允许游客查看", "type": "switch", "default": false },
+      { "key": "ip_interval_hours", "name": "IP 信息：更新间隔（小时）", "type": "number", "default": 24 },
+      { "key": "enabled", "name": "回程：自动检测", "type": "switch", "default": true },
+      { "key": "guest_visible", "name": "回程：允许游客查看", "type": "switch", "default": false },
+      { "key": "show_home", "name": "回程：在首页显示", "type": "switch", "default": true },
+      { "key": "show_details", "name": "回程：在详情页显示", "type": "switch", "default": true },
+      { "key": "all_nodes", "name": "回程：检测全部节点", "type": "switch", "default": true },
+      { "key": "nodes", "name": "回程：指定节点", "type": "nodes", "default": "[]" },
+      { "key": "interval_minutes", "name": "回程：检测间隔（分钟）", "type": "number", "default": 360 },
+      { "key": "concurrency", "name": "回程：同时检测的节点数量", "type": "number", "default": 2 },
+      { "key": "nexttrace_path", "name": "回程：NextTrace 程序路径", "type": "string", "default": "nexttrace", "help": "检测目标跟随 LuminaUltra 主题的主页延迟检测设置。" }
+    ]
+  }
+}

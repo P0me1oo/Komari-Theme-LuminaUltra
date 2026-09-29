@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, CircleDollarSign, Grid3x3, LayoutGrid, List, Monitor, Palette, Rows3, Settings, SlidersHorizontal, Sun, Moon } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, CircleDollarSign, Grid3x3, LayoutGrid, List, Monitor, Palette, RefreshCw, Rows3, Settings, SlidersHorizontal, Sun, Moon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useViewMode } from "@/hooks/useViewMode";
 import { useNodeStoreStatus } from "@/hooks/useNode";
 import { useAuth } from "@/hooks/useAuth";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
+import { useNetworkDetection } from "@/hooks/useNetworkDetection";
 import { preloadAssetsPage } from "@/services/assetsPageLoader";
 import { canAccessAssets } from "@/utils/assetsAccess";
 import {
@@ -41,6 +42,9 @@ export function FloatingControls({
   const { appearance, setAppearance } = usePreferences();
   const { mode, nextMode, toggleMode } = useViewMode();
   const { data: me } = useAuth();
+  const { run: runDetection, running: detectionRunning, notice: detectionNotice, reset: resetDetection } = useNetworkDetection();
+  const noticeMessage = detectionNotice?.message;
+  const noticeError = detectionNotice?.error;
   const themeSettings = useThemeSettings();
   const { failureStreak } = useNodeStoreStatus();
   const [collapsed, setCollapsed] = useState(true);
@@ -57,10 +61,12 @@ export function FloatingControls({
     themeSettings.showCostSummaryFloatingButton &&
     canAccessAssets(themeSettings, loggedIn);
   const showColorPicker = loggedIn;
+  // 管理员始终保留检测入口；插件不可用时点击后提示原因，不依赖结果读取成功。
+  const showManualDetection = loggedIn;
   // 包含收起箭头，按实际按钮数量分配单行宽度。
   const controlCount = 1 +
     (settingsReady ? APPEARANCE_OPTIONS.length + 1 + Number(showColorPicker) : 0) +
-    Number(showAssets) + Number(showThemeManage) + Number(showAdmin);
+    Number(showManualDetection) + Number(showAssets) + Number(showThemeManage) + Number(showAdmin);
   const showSyncWarning = failureStreak >= 2;
   const hiddenTabIndex = collapsed ? -1 : undefined;
   const ToggleIcon = collapsed ? ChevronLeft : ChevronRight;
@@ -71,6 +77,12 @@ export function FloatingControls({
     onExpandedChange?.(false);
     return () => onExpandedChange?.(false);
   }, [onExpandedChange]);
+
+  useEffect(() => {
+    if (!noticeMessage) return;
+    const timer = window.setTimeout(resetDetection, noticeError ? 10000 : 6000);
+    return () => window.clearTimeout(timer);
+  }, [noticeMessage, noticeError, resetDetection]);
 
   const toggleControls = () => {
     // 收起快捷栏时同时结束子面板状态，避免下次展开时调色盘自动复现。
@@ -152,6 +164,19 @@ export function FloatingControls({
                 )}
               </>
             )}
+            {showManualDetection && (
+              <button
+                type="button"
+                onClick={() => runDetection()}
+                disabled={detectionRunning}
+                aria-label="检测回程"
+                title="检测所选节点的三网回程"
+                tabIndex={hiddenTabIndex}
+                className="control-button grid h-9 w-9 place-items-center"
+              >
+                <RefreshCw size={16} className={detectionRunning ? "animate-spin" : undefined} />
+              </button>
+            )}
             {(showAssets || showThemeManage || showAdmin) && (
               <div className="floating-controls-navigation" role="group" aria-label="页面入口">
                 {showAssets && (
@@ -211,7 +236,15 @@ export function FloatingControls({
             <MetricColorPicker hidden={collapsed || !colorsOpen} />
           </Suspense>
         )}
-        {showSyncWarning && !collapsed && !colorsOpen && (
+        {detectionNotice && !collapsed && !colorsOpen && (
+          <div
+            className={clsx("floating-controls-manual-notice", detectionNotice.error && "is-error")}
+            role="status"
+          >
+            {detectionNotice.message}
+          </div>
+        )}
+        {showSyncWarning && !detectionNotice && !collapsed && !colorsOpen && (
           <div className="floating-controls-sync-warning pointer-events-none flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--status-offline)_32%,transparent)] bg-[color-mix(in_srgb,var(--surface-a)_90%,transparent)] px-3 py-1 text-[11px] font-medium text-[var(--status-offline)] shadow-[0_10px_25px_-18px_rgba(0,0,0,0.8)] backdrop-blur">
             <AlertTriangle size={12} />
             <span>实时状态同步异常，当前展示的是最近缓存</span>

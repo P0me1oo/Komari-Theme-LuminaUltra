@@ -1,5 +1,6 @@
 import { memo, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { SingleNetworkRouteLabel } from "@/components/node/NetworkRouteLabel";
 import {
   ArrowDown,
   ArrowUp,
@@ -14,7 +15,7 @@ import {
 import { clsx } from "clsx";
 import { Flag } from "@/components/ui/Flag";
 import { OsLogo } from "@/components/ui/OsLogo";
-import { IpStackBadges } from "./IpStackBadges";
+import { NodeIPBadges } from "./NodeIPBadges";
 import { NodeTodayTrafficPopover } from "./NodeTodayTrafficPopover";
 import { HealthBucketTooltip } from "./HealthBucketTooltip";
 import { useNodeCardModel } from "@/hooks/useNodeCardModel";
@@ -71,15 +72,18 @@ function MiniHeader({
 function MiniChips({
   tags,
   renewalPrice,
+  uuid,
   ipv4,
   ipv6,
+  showStack,
 }: {
   tags: MiniTag[];
   renewalPrice: string | null;
+  uuid: string;
   ipv4?: string | null;
   ipv6?: string | null;
+  showStack: boolean;
 }) {
-  if (!renewalPrice && tags.length === 0 && !ipv4 && !ipv6) return null;
   const tagTitle = joinTagTitle(tags);
   return (
     <div className="mini-node-chip-row">
@@ -89,7 +93,7 @@ function MiniChips({
           {renewalPrice}
         </span>
       )}
-      <IpStackBadges ipv4={ipv4} ipv6={ipv6} />
+      <NodeIPBadges uuid={uuid} ipv4={ipv4} ipv6={ipv6} showStack={showStack} />
       {tags.length > 0 && (
         <div className="mini-node-tag-lane" title={tagTitle}>
           {tags.map((tag, index) => (
@@ -321,6 +325,7 @@ function MiniHealthBars({
 
 // 延迟/丢包必显；mini 使用内联 SVG，避免每张卡创建 Canvas 与观察器。
 const MiniHealth = memo(function MiniHealth({
+  uuid,
   ping,
   pingBuckets,
   latencyColor,
@@ -329,6 +334,7 @@ const MiniHealth = memo(function MiniHealth({
   pingLoading,
   pingError,
 }: {
+  uuid: string;
   ping: PingOverviewItem;
   pingBuckets: PingOverviewBucket[];
   latencyColor: string;
@@ -373,10 +379,12 @@ const MiniHealth = memo(function MiniHealth({
       </div>
       <div className="mini-node-health-item">
         <div className="mini-node-health-head">
-          <span className="mini-node-health-label">
-            <Unplug size={12} strokeWidth={2} />
-            丢包
-          </span>
+          <SingleNetworkRouteLabel uuid={uuid}>
+            <span className="mini-node-health-label">
+              <Unplug size={12} strokeWidth={2} />
+              丢包
+            </span>
+          </SingleNetworkRouteLabel>
           <strong className="mini-node-health-value tabular" style={{ color: lossColor }}>
             {ping.loss != null ? (
               <>
@@ -441,12 +449,15 @@ export const MiniNodeCard = memo(function MiniNodeCard({
       <MiniChips
         tags={footerTags}
         renewalPrice={showCosts ? renewalPrice : null}
-        ipv4={showIpStackBadges ? node.ipv4 : undefined}
-        ipv6={showIpStackBadges ? node.ipv6 : undefined}
+        uuid={uuid}
+        ipv4={node.ipv4}
+        ipv6={node.ipv6}
+        showStack={showIpStackBadges}
       />
       <MiniVitals node={node} loadFraction={loadFraction} />
       <MiniFlow node={node} upRate={upRate} downRate={downRate} />
       <MiniHealth
+        uuid={uuid}
         ping={ping}
         pingBuckets={pingBuckets}
         latencyColor={latencyColor}

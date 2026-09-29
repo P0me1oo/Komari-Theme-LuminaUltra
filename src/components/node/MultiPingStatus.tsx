@@ -7,6 +7,7 @@ import { latencyHeatColor, lossHeatColor } from "@/utils/metricTone";
 import { HealthBucketTooltip } from "./HealthBucketTooltip";
 import { LatencyBars } from "./LatencyBars";
 import { QualityBars } from "./QualityBars";
+import { NetworkRouteLabel } from "./NetworkRouteLabel";
 import { formatHealthBucketTooltip } from "./pingBucketText";
 
 type MultiPingStatusDensity = "large" | "compact";
@@ -83,18 +84,14 @@ const MultiPingMetricRow = memo(function MultiPingMetricRow({
             }`
       }
     >
-      <div
-        className={clsx(
-          "multi-ping-metric-head",
-          metric === "loss" && "is-value-only",
-        )}
-      >
+      <div className="multi-ping-metric-head">
         {metric === "latency" && (
           <span className="multi-ping-name-wrap">
             <span className="multi-ping-name">{line.taskName}</span>
             {isUnassigned && <span className="multi-ping-unassigned">未绑定</span>}
           </span>
         )}
+        {metric === "loss" && <NetworkRouteLabel uuid={line.client} taskId={line.taskId} />}
         <strong
           className="multi-ping-value tabular"
           style={{

@@ -84,12 +84,13 @@ test("IPregistry 缺少密钥不请求外网，拒绝保存无效配置", async 
 });
 
 for (const status of [401, 402, 403, 429, 451]) {
-  test("IPregistry HTTP " + status + " 返回对应错误，429 延用全局冷却", async () => {
+  test("IPregistry HTTP " + status + " 返回对应错误，429 使用接口等待时间", async () => {
     const h = harness({ config: { enabled: false, ip_enabled: true, ip_source: "ipregistry", ipregistry_api_key: "example-key" },
-      fetch: async () => ({ ok: false, status, json: async () => ({ message: "example-key" }) }) });
+      fetch: async () => ({ ok: false, status, headers: new Headers({ "Retry-After": "20" }), json: async () => ({ message: "example-key" }) }) });
     await h.context.load(); await h.context.tickIPs();
     assert.match(h.state().nodes.a.ips[0].error, new RegExp("IPregistry.*" + status));
-    assert.equal(h.state().ip_cooldown_until > 0, status === 429);
+    assert.equal(h.state().ipregistry_retry_at, status === 429 ? 1800000020000 : 0);
+    assert.equal(h.state().ip_cooldown_until, 0);
     assert.doesNotMatch(JSON.stringify(h.files), /example-key/);
   });
 }
@@ -514,6 +515,96 @@ test("查询间隔从响应完成起计算，未满 60 秒不查询下一个地�
   assert.match(requests[1], /203\.0\.113\.2$/);
   h.advance(60000); await h.context.tickIPs();
   assert.equal(requests.length, 2);
+});
+
+const registryConfig = { enabled: false, ip_enabled: true, ip_source: "ipregistry", ipregistry_api_key: "example-key" };
+const registryResponse = () => ({ ok: true, status: 200, json: async () => ({ connection: { asn: 64500, organization: "测试网络", type: "hosting" } }) });
+
+test("IPregistry 不继承旧固定冷却，普通失败轮转到其他地址后可直接重试", async () => {
+  const requests = [];
+  const h = harness({ config: registryConfig,
+    nodes: [{ uuid: "a", ipv4: "203.0.113.1" }, { uuid: "b", ipv4: "203.0.113.2" }],
+    fetch: async (url) => { requests.push(url); return requests.length === 1 ? { ok: false, status: 500 } : registryResponse(); },
+  });
+  h.files["/store/network-state-v2.json.0"] = JSON.stringify({ revision: 1, nodes: {}, jobs: [],
+    ip_next_query_at: 1800000060000, ip_cooldown_until: 1800003600000 });
+  await h.context.load(); await h.context.tickIPs();
+  h.advance(10000); await h.context.tickIPs();
+  h.advance(10000); await h.context.tickIPs();
+  assert.deepEqual(requests.map((url) => url.split("/").pop()), ["203.0.113.1", "203.0.113.2", "203.0.113.1"]);
+  await h.context.tickIPs(); assert.equal(requests.length, 3);
+  assert.equal((await results(h)).body.ip_error, null);
+});
+
+test("IPregistry 成功后下一次调度即可查询另一个地址，无需等 60 秒", async () => {
+  let requests = 0;
+  const h = harness({ config: registryConfig,
+    nodes: [{ uuid: "a", ipv4: "203.0.113.1" }, { uuid: "b", ipv4: "203.0.113.2" }],
+    fetch: async () => { requests++; return registryResponse(); },
+  });
+  await h.context.load(); await h.context.tickIPs(); await h.context.tickIPs();
+  assert.equal(requests, 2);
+  assert.equal(h.state().ip_next_query_at, 0);
+});
+
+test("IPregistry 手动请求遇到 429 保留队列，重载后也等待官方期限", async () => {
+  const config = { ...registryConfig, ip_enabled: false, ip_guest_visible: true };
+  const h = harness({ config, fetch: async () => ({ ok: false, status: 429, headers: new Headers({ "Retry-After": "25" }) }) });
+  await h.context.load(); await refresh(h); await h.context.tickIPs();
+  assert.equal(h.state().manual_ips.length, 1);
+  const notice = (await results(h)).body.ip_error;
+  assert.match(notice, /IPregistry.*按接口要求等待/);
+  assert.doesNotMatch(notice, /手动刷新可绕过/);
+  assert.equal((await results(h, {})).body.ip_error, undefined);
+  await h.context.unload();
+  let requests = 0;
+  const fresh = harness({ config, fetch: async () => { requests++; return registryResponse(); } });
+  Object.assign(fresh.files, h.files);
+  await fresh.context.load(); await refresh(fresh); await fresh.context.tickIPs();
+  fresh.advance(24999); await fresh.context.tickIPs(); assert.equal(requests, 0);
+  fresh.advance(1); await fresh.context.tickIPs(); assert.equal(requests, 1);
+  assert.equal(fresh.state().manual_ips.length, 0);
+  assert.equal((await results(fresh)).body.ip_error, null);
+});
+
+test("IPregistry 连续 429 每次采用新的等待时间，不强制等一小时", async () => {
+  let requests = 0;
+  const h = harness({ config: registryConfig, fetch: async () => {
+    requests++;
+    return requests < 3 ? { ok: false, status: 429, headers: new Headers({ "Retry-After": requests === 1 ? "12" : "3" }) } : registryResponse();
+  } });
+  await h.context.load(); await h.context.tickIPs();
+  h.advance(11999); await h.context.tickIPs(); assert.equal(requests, 1);
+  h.advance(1); await h.context.tickIPs(); assert.equal(requests, 2);
+  h.advance(2999); await h.context.tickIPs(); assert.equal(requests, 2);
+  h.advance(1); await h.context.tickIPs(); assert.equal(requests, 3);
+});
+
+test("IPregistry 429 无有效等待头时在下一轮重试，窗口剩余秒数可作后备", async () => {
+  for (const headers of [new Headers(), new Headers({ "Retry-After": "invalid", "X-Rate-Limit-Reset": "5" })]) {
+    let requests = 0;
+    const h = harness({ config: registryConfig, fetch: async () => {
+      requests++;
+      return requests === 1 ? { ok: false, status: 429, headers } : registryResponse();
+    } });
+    await h.context.load(); await h.context.tickIPs();
+    if (headers.has("X-Rate-Limit-Reset")) {
+      h.advance(4999); await h.context.tickIPs(); assert.equal(requests, 1);
+      h.advance(1);
+    }
+    await h.context.tickIPs(); assert.equal(requests, 2);
+  }
+});
+
+test("两种来源的限流状态互不影响，切回 IPinfo 仍保留原等待时间", async () => {
+  let requests = 0;
+  const h = harness({ config: { enabled: false, ip_enabled: true }, fetch: async () => { requests++; return { ok: false, status: 429, headers: new Headers({ "Retry-After": "20" }) }; } });
+  await h.context.load(); await h.context.tickIPs();
+  Object.assign(h.config, registryConfig);
+  await h.context.tickIPs(); assert.equal(requests, 2);
+  h.config.ip_source = "ipinfo";
+  h.advance(20000); await h.context.tickIPs(); assert.equal(requests, 2);
+  assert.match((await results(h)).body.ip_error, /IPinfo.*手动刷新可绕过/);
 });
 
 test("429 暂停全部自动 IP 查询，连续限流仍只冷却一小时，不影响回程", async () => {

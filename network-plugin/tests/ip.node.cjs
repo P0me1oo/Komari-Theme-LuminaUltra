@@ -1,11 +1,27 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { queryURL, queryHeaders, parseIPInfo, parseIPregistry } = require("../ip.cjs");
+const { queryURL, queryHeaders, parseIPInfo, parseIPregistry, registryRetryAt } = require("../ip.cjs");
 const { normalizeIPConfig } = require("../core.cjs");
 
 const sample = (asnType, companyType) => ({ data: {
   ip: "203.0.113.1", asn: { asn: "AS64500", name: "测试机构", type: asnType }, company: { type: companyType },
 } });
+
+test("IPregistry 限流时间优先读取建议等待秒数，兼容日期及窗口剩余秒数", () => {
+  const now = Date.parse("2026-10-01T00:00:00Z");
+  const read = (values) => registryRetryAt(new Headers(values), now);
+  assert.equal(read({ "Retry-After": "15", "X-Rate-Limit-Reset": "600" }), now + 15000);
+  assert.equal(read({ "Retry-After": "0" }), now);
+  assert.equal(read({ "Retry-After": "Thu, 01 Oct 2026 00:00:30 GMT" }), now + 30000);
+  assert.equal(read({ "Retry-After": "Wed, 30 Sep 2026 23:00:00 GMT" }), now);
+  assert.equal(read({ "Retry-After": "invalid", "X-Rate-Limit-Reset": "25" }), now + 25000);
+  assert.equal(read({ "X-Rate-Limit-Reset": "90" }), now + 90000);
+  for (const value of ["", "invalid", "-1", "Infinity", "9".repeat(100)]) {
+    assert.equal(read({ "Retry-After": value }), 0);
+  }
+  assert.equal(read({}), 0);
+  assert.equal(registryRetryAt(undefined, now), 0);
+});
 
 test("只构造所选 IPinfo 请求，不添加其他来源或凭据", () => {
   assert.equal(queryURL("ipinfo", "203.0.113.1"), "https://ipinfo.io/widget/demo/203.0.113.1");

@@ -66,6 +66,8 @@ async function verify() {
   if (ipSource.queryHeaders(registryConfig.ip_source, registryConfig.ipregistry_api_key).Authorization !== "ApiKey example-key") throw new Error("IPregistry 请求头不正确");
   const registryData = ipSource.parseIPregistry({connection: {asn: 64501, organization: "测试网络", type: "hosting"}});
   if (registryData.asn !== "AS64501" || registryData.type !== "机房") throw new Error("IPregistry 解析失败");
+  const retryNow = Date.now();
+  if (ipSource.registryRetryAt(new Headers({"Retry-After": "15"}), retryNow) !== retryNow + 15000) throw new Error("IPregistry 等待时间解析失败");
   await fs.promises.readFile(statePath + "." + revision % 2, "utf8");
   return true;
 }

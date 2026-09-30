@@ -54,6 +54,22 @@ function httpError(source, status) {
   return sourceName(source) + " 查询失败（HTTP " + status + "）" + (hint ? "：" + hint : "");
 }
 
+function registryRetryAt(headers, now) {
+  if (!headers || typeof headers.get !== "function") return 0;
+  function seconds(value) {
+    if (!/^\d+(?:\.\d+)?$/.test(value)) return null;
+    const deadline = now + Math.ceil(Number(value) * 1000);
+    return Number.isFinite(deadline) && deadline <= 8640000000000000 ? deadline : null;
+  }
+  const retry = text(headers.get("Retry-After"));
+  const deadline = seconds(retry);
+  if (deadline !== null) return deadline;
+  // 兼容 HTTP 日期；官方返回的秒数优先，无效时再用窗口剩余秒数。
+  const date = /[A-Za-z]/.test(retry) ? Date.parse(retry) : NaN;
+  if (Number.isFinite(date)) return Math.max(now, date);
+  return seconds(text(headers.get("X-Rate-Limit-Reset"))) ?? 0;
+}
+
 function parseIPInfo(response) {
   const data = response && response.data;
   if (!data || typeof data !== "object" || response.error || data.error) {
@@ -75,4 +91,4 @@ function parseIPInfo(response) {
   return { asn: number, organization: (organization || "未知").slice(0, 160), type, source: "IPinfo", provider: SOURCE };
 }
 
-module.exports = { SOURCE, queryURL, queryHeaders, sourceName, apiKey, httpError, parseIPInfo, parseIPregistry };
+module.exports = { SOURCE, queryURL, queryHeaders, sourceName, apiKey, httpError, registryRetryAt, parseIPInfo, parseIPregistry };

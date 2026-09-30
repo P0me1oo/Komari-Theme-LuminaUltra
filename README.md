@@ -12,7 +12,7 @@
 
 LuminaUltra **v1.15.0** 在“IP 信息与标签”中新增 IPregistry 数据来源和自填 API 密钥，支持查询 IPv4、IPv6 的 ASN、运营商 / 机构和 IP 类型。需要同时升级网络插件至 0.6.0 或更新版本。主题变更见 [v1.15.0 更新说明](.github/release-notes/v1.15.0.md)。
 
-配套网络插件 **v0.6.0** 支持 IPinfo 与 IPregistry 单选，查询在后台完成，IPregistry 密钥通过请求头发送。沿用每次完成后至少等待 60 秒、HTTP 429 固定冷却 1 小时的调度规则。完整变更见 [网络插件 v0.6.0 更新说明](.github/release-notes/network-v0.6.0.md)。
+配套网络插件 **v0.6.1** 取消 IPregistry 的固定 60 秒间隔和 1 小时冷却；遇到 HTTP 429 时按接口返回的等待时间重试，手动刷新也遵守。IPinfo 保留原有调度规则。已安装主题 1.15.0 时只需升级插件。完整变更见 [网络插件 v0.6.1 更新说明](.github/release-notes/network-v0.6.1.md)。
 
 ## 效果预览
 

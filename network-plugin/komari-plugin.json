@@ -2,7 +2,7 @@
   "name": "Lumina 网络识别",
   "short": "lumina-network",
   "description": "通过 IPinfo 或 IPregistry 独立查询全部节点的 IP 标签，跟随主页延迟探测点检测回程。",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "author": "P0me1oo",
   "komari": ">=1.4.3",
   "entry": "script.js",

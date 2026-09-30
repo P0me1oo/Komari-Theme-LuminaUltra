@@ -10,7 +10,7 @@ const storage = typeof __storageDir__ === "string" ? __storageDir__ : ".";
 const statePath = storage + "/network-state-v2.json";
 const IP_QUERY_INTERVAL_MS = 60000;
 const IP_COOLDOWN_MS = 3600000;
-let state = { nodes: {}, jobs: [], ip_attempts: {}, manual_routes: [], manual_ips: [], ip_next_query_at: 0, ip_cooldown_until: 0 };
+let state = { nodes: {}, jobs: [], ip_attempts: {}, manual_routes: [], manual_ips: [], ip_next_query_at: 0, ip_cooldown_until: 0, ipregistry_retry_at: 0 };
 let routeBusy = false;
 let ipBusy = false;
 let ipController = null;
@@ -176,13 +176,16 @@ async function updateOneIP(nodes, config, now) {
   const current = new Set(ips.map(ipKey));
   state.manual_ips = state.manual_ips.filter((item) => current.has(ipKey(item)));
   const manual = state.manual_ips[0];
-  // 手动队列可绕过限流冷却，但所有请求都遵守完成后至少等待 60 秒的间隔。
-  if (now < state.ip_next_query_at || (!manual && now < state.ip_cooldown_until)) return;
+  const registry = config.ip_source === "ipregistry";
+  // IPregistry 只遵守服务端限流时间，手动刷新也不能绕过；旧固定等待仅用于 IPinfo。
+  if (registry ? now < state.ipregistry_retry_at : now < state.ip_next_query_at || (!manual && now < state.ip_cooldown_until)) return;
+  // 失败地址没有额外冷却，按上次尝试时间轮转，避免它一直占据队首。
+  if (registry) ips.sort((a, b) => (state.ip_attempts[ipKey(a)] || 0) - (state.ip_attempts[ipKey(b)] || 0));
   const item = manual || (config.ip_enabled ? ips.find((entry) => {
     const cached = nodeState(entry.uuid).ips.find((ip) => ip.address === entry.address && ip.provider === config.ip_source);
     const attempted = state.ip_attempts[ipKey(entry)];
     return !(cached && now - Date.parse(cached.checked_at) < config.ip_interval_hours * 3600000) &&
-      !(attempted && now - attempted < IP_COOLDOWN_MS);
+      (registry || !(attempted && now - attempted < IP_COOLDOWN_MS));
   }) : undefined);
   if (!item) return;
   const { family, address } = item;
@@ -191,13 +194,14 @@ async function updateOneIP(nodes, config, now) {
   const controller = new AbortController();
   ipController = controller;
   const timer = setTimeout(() => controller.abort(), 15000);
-  let data, error, rateLimited = false;
+  let data, error, rateLimited = false, registryRetryAt = 0;
   const sourceName = ipSource.sourceName(config.ip_source);
   try {
     const response = await fetch(ipSource.queryURL(config.ip_source, address), {
       signal: controller.signal, headers: ipSource.queryHeaders(config.ip_source, config.ipregistry_api_key),
     });
     rateLimited = response.status === 429;
+    if (registry && rateLimited) registryRetryAt = ipSource.registryRetryAt(response.headers, Date.now());
     if (!response.ok) error = ipSource.httpError(config.ip_source, response.status);
     else {
       const payload = await response.json();
@@ -211,11 +215,13 @@ async function updateOneIP(nodes, config, now) {
   }
   if (stopped) return;
   const completed = Date.now();
-  state.ip_next_query_at = completed + IP_QUERY_INTERVAL_MS;
   state.ip_attempts[ipKey(item)] = completed;
-  // 每次收到 429 都从本次响应起固定冷却一小时，不累计增加冷却时长。
-  // 手动查询成功也不提前解除自动队列的冷却。
-  if (rateLimited) state.ip_cooldown_until = completed + IP_COOLDOWN_MS;
+  if (registry) state.ipregistry_retry_at = registryRetryAt;
+  else {
+    state.ip_next_query_at = completed + IP_QUERY_INTERVAL_MS;
+    // IPinfo 保留固定一小时冷却，手动查询成功不提前解除。
+    if (rateLimited) state.ip_cooldown_until = completed + IP_COOLDOWN_MS;
+  }
   await saveState();
   const latestConfig = core.normalizeIPConfig(await server.getConfig());
   if (latestConfig.ip_source !== config.ip_source || latestConfig.ipregistry_api_key !== config.ipregistry_api_key) return;
@@ -231,7 +237,7 @@ async function updateOneIP(nodes, config, now) {
     saved.ips = saved.ips.filter((ip) => ip.family !== family);
     saved.ips.push(record);
   }
-  if (manual) state.manual_ips = state.manual_ips.filter((entry) => ipKey(entry) !== ipKey(manual));
+  if (manual && !(registry && rateLimited)) state.manual_ips = state.manual_ips.filter((entry) => ipKey(entry) !== ipKey(manual));
   await saveState();
 }
 
@@ -314,6 +320,7 @@ async function load() {
           manual_ips: Array.isArray(saved.manual_ips) ? saved.manual_ips : [],
           ip_next_query_at: Number.isFinite(saved.ip_next_query_at) && saved.ip_next_query_at > 0 ? saved.ip_next_query_at : 0,
           ip_cooldown_until: Number.isFinite(saved.ip_cooldown_until) && saved.ip_cooldown_until > 0 ? saved.ip_cooldown_until : 0,
+          ipregistry_retry_at: Number.isFinite(saved.ipregistry_retry_at) && saved.ipregistry_retry_at > 0 ? saved.ipregistry_retry_at : 0,
         };
         revision = saved.revision;
       }
@@ -342,8 +349,10 @@ async function load() {
       const result = core.visibleData(nodes, state, { ...routeConfig, ...ipConfig }, admin, Date.now());
       if (admin) {
         result.error = routeConfigError || routeError;
-        const cooldown = state.ip_cooldown_until > Date.now()
-          ? ipSource.sourceName(ipConfig.ip_source) + " 请求受限，自动查询暂停至 " + new Date(state.ip_cooldown_until).toISOString().slice(0, 19).replace("T", " ") + " UTC；手动刷新可绕过冷却"
+        const registry = ipConfig.ip_source === "ipregistry";
+        const retryAt = registry ? state.ipregistry_retry_at : state.ip_cooldown_until;
+        const cooldown = retryAt > Date.now()
+          ? ipSource.sourceName(ipConfig.ip_source) + " 请求受限，" + (registry ? "查询" : "自动查询") + "暂停至 " + new Date(retryAt).toISOString().slice(0, 19).replace("T", " ") + (registry ? " UTC；按接口要求等待后重试" : " UTC；手动刷新可绕过冷却")
           : null;
         result.ip_error = ipConfigError || ipError || cooldown;
       }

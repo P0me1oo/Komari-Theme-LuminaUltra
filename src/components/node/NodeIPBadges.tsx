@@ -10,7 +10,7 @@ export function NodeIPBadges({ uuid, ipv4, ipv6, showStack = true }: {
 }) {
   const { node, settings } = useNetworkInfo(uuid);
   const ips = node && settings && showIPLabels(settings) ? node.ips : [];
-  const groups: { key: string; families: number[]; labels: { key: string; text: string }[]; title: string }[] = [];
+  const groups: { key: string; families: number[]; labels: ReturnType<typeof networkIPLabels>; title: string }[] = [];
   for (const family of [4, 6]) {
     const ip = ips.find((entry) => entry.family === family);
     const labels = ip && settings ? networkIPLabels(ip, settings) : [];
@@ -30,7 +30,7 @@ export function NodeIPBadges({ uuid, ipv4, ipv6, showStack = true }: {
           {showStack && <IpStackBadges families={group.families} />}
           {group.labels.map((label) => (
             <span key={label.key} className="node-ip-attribute" data-ip-label={label.key}
-              title={[group.families.map((family) => `IPv${family}`).join(" / "), label.text, group.title].filter(Boolean).join(" · ")}>
+              title={[group.families.map((family) => `IPv${family}`).join(" / "), label.fullText ?? label.text, group.title].filter(Boolean).join(" · ")}>
               {label.text}
             </span>
           ))}

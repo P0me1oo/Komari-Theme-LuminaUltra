@@ -41,6 +41,14 @@ function HomeNetwork({ uuid }: { uuid: string }) {
 }
 
 describe.each([{ name: "首页标签", View: HomeNetwork, home: true }, { name: "详情标签", View: NetworkPanel, home: false }])("$name", ({ View, home }) => {
+  it("机构标签省略法律后缀，悬停保留原名，关闭机构显示时两者均隐藏", () => {
+    const organization = "Cloudflare, Inc.";
+    const html = render(View, { organization });
+    expect(html).toMatch(/data-ip-label="organization"[^>]*>Cloudflare<\/span>/);
+    expect(html).toMatch(/title="[^"]*Cloudflare, Inc\./);
+    const hidden = render(View, { organization }, {}, { show_organization: false });
+    expect(hidden).not.toContain("Cloudflare");
+  });
   it("ASN、机构和类型是三个独立标签", () => {
     const html = render(View);
     expect(html).toMatch(/data-ip-label="asn"[^>]*>AS64500<\/span>/);

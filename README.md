@@ -10,7 +10,7 @@
 
 ## 当前版本
 
-LuminaUltra **v1.15.1** 修复 IP 标签有空位却提前省略和换行的问题。大卡片的标签行可使用右上角按钮下方的空间，所有首页 IP 属性标签按内容自然展开；整行放不下时后续标签换行，只有单个标签超过整行宽度时才省略。主题变更见 [v1.15.1 更新说明](.github/release-notes/v1.15.1.md)。
+LuminaUltra **v1.15.2** 在首页和详情页的 IP 机构标签中省略名称末尾的 Inc.、LLC、Ltd.、Limited、Co., Ltd.、Corp. 及 Incorporated、Corporation、Company Limited 等后缀，兼容大小写、常见标点和后缀括号。悬停保留原始名称，名称中间的文字不受影响。沿用标签自然展开和换行布局。主题变更见 [v1.15.2 更新说明](.github/release-notes/v1.15.2.md)。
 
 配套网络插件 **v0.6.1** 取消 IPregistry 的固定 60 秒间隔和 1 小时冷却；遇到 HTTP 429 时按接口返回的等待时间重试，手动刷新也遵守。IPinfo 保留原有调度规则。已安装主题 1.15.0 时只需升级插件。完整变更见 [网络插件 v0.6.1 更新说明](.github/release-notes/network-v0.6.1.md)。
 

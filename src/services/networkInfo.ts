@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { fetchWithTimeout } from "@/utils/abort";
+import { organizationLabel } from "@/utils/organization";
 
 const NetworkSchema = z.object({ asn: z.string(), name: z.string() });
 const HopSchema = z.object({
@@ -44,10 +45,10 @@ export function routeName(route: NetworkRoute) {
 }
 
 export function networkIPLabels(ip: NetworkIP, settings: NetworkResults) {
-  const labels: { key: string; text: string }[] = [];
+  const labels: { key: string; text: string; fullText?: string }[] = [];
   if (settings.show_asn !== false && ip.asn) labels.push({ key: "asn", text: ip.asn });
   const organization = ip.organization.trim();
-  if (settings.show_organization !== false && organization && organization !== "未知") labels.push({ key: "organization", text: organization });
+  if (settings.show_organization !== false && organization && organization !== "未知") labels.push({ key: "organization", text: organizationLabel(organization), fullText: organization });
   if (settings.show_ip_type !== false && ip.type && ip.type !== "未知") labels.push({ key: "type", text: ip.type });
   return labels;
 }

@@ -16,13 +16,20 @@ const config: NetworkConfig = {
   concurrency: 2, nexttrace_path: "nexttrace",
 };
 
-function render() {
-  return renderToStaticMarkup(<NetworkSettings config={config} loading={false} loadError={null}
+function render(settings = config) {
+  return renderToStaticMarkup(<NetworkSettings config={settings} loading={false} loadError={null}
     clients={[]} clientsLoading={false} clientsError={null} saving={false} dirty={false}
     formRef={createRef<HTMLFormElement>()} onChange={() => {}} onReload={() => {}} onSave={async () => true} />);
 }
 
 describe("独立的 IP 与回程设置", () => {
+  it("选择 IPregistry 时提供必填密钥输入框，旧来源无需填写", () => {
+    expect(render()).toContain('value="ipregistry"');
+    expect(render()).not.toContain('type="password"');
+    const html = render({ ...config, ip_source: "ipregistry" });
+    expect(html).toContain("IPregistry API 密钥");
+    expect(html).toMatch(/type="password"[^>]*required=""/);
+  });
   it("IP 区域只有全局设置，没有服务器选择或回程参数", () => {
     const html = render();
     const split = html.indexOf('instance-panel-title">三网回程检测</h2>');

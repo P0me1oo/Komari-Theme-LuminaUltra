@@ -1,6 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { queryURL, parseIPInfo } = require("../ip.cjs");
+const { queryURL, queryHeaders, parseIPInfo, parseIPregistry } = require("../ip.cjs");
+const { normalizeIPConfig } = require("../core.cjs");
 
 const sample = (asnType, companyType) => ({ data: {
   ip: "203.0.113.1", asn: { asn: "AS64500", name: "测试机构", type: asnType }, company: { type: companyType },
@@ -36,5 +37,31 @@ test("缺少扩展类型时保留基础 ASN，不根据机构名称猜测类型"
 test("拒绝空响应、错误响应和旧来源格式，不把查询失败缓存成成功", () => {
   for (const payload of [null, {}, { data: {} }, { data: "" }, { error: "quota", data: { org: "AS64500 测试机构" } }, { data: { error: true } }, { asn: "AS64500 旧来源" }]) {
     assert.throws(() => parseIPInfo(payload));
+  }
+});
+
+test("IPregistry 支持双栈地址，密钥只放请求头，未填写时拒绝配置", () => {
+  assert.equal(queryURL("ipregistry", "203.0.113.1"), "https://api.ipregistry.co/203.0.113.1");
+  assert.equal(queryURL("ipregistry", "2001:db8::1"), "https://api.ipregistry.co/2001%3Adb8%3A%3A1");
+  assert.deepEqual(queryHeaders("ipregistry", " example-key "), { Authorization: "ApiKey example-key" });
+  assert.deepEqual(queryHeaders("ipinfo", "example-key"), {});
+  for (const key of [undefined, "", "  ", "key\nheader", 123]) {
+    assert.throws(() => normalizeIPConfig({ ip_source: "ipregistry", ipregistry_api_key: key }));
+  }
+  assert.equal(normalizeIPConfig({ ip_source: "ipregistry", ipregistry_api_key: " example-key " }).ipregistry_api_key, "example-key");
+  assert.equal(normalizeIPConfig({}).ip_source, "ipinfo");
+});
+
+test("IPregistry 读取网络 ASN 和机构，网络类型优先于公司类型", () => {
+  assert.deepEqual(parseIPregistry({ connection: { asn: 64500, organization: "测试网络", type: "hosting" }, company: { name: "测试公司", type: "isp" } }), {
+    asn: "AS64500", organization: "测试网络", type: "机房", source: "IPregistry", provider: "ipregistry",
+  });
+  for (const [kind, label] of Object.entries({ business: "商业", education: "教育", government: "政府", hosting: "机房", isp: "家宽", inactive: "未活跃网络", unusual: "其他" })) {
+    assert.equal(parseIPregistry({ connection: { type: kind } }).type, label);
+  }
+  assert.equal(parseIPregistry({ connection: { asn: 64500 } }).type, "未知");
+  assert.equal(parseIPregistry({ connection: null, company: { name: "公司", type: "hosting" } }).type, "机房");
+  for (const payload of [null, {}, { connection: null, company: null }, { code: "INVALID_API_KEY" }, { error: true }, sample("hosting", "isp")]) {
+    assert.throws(() => parseIPregistry(payload));
   }
 });

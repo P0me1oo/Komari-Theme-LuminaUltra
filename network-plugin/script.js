@@ -192,13 +192,19 @@ async function updateOneIP(nodes, config, now) {
   ipController = controller;
   const timer = setTimeout(() => controller.abort(), 15000);
   let data, error, rateLimited = false;
+  const sourceName = ipSource.sourceName(config.ip_source);
   try {
-    const response = await fetch(ipSource.queryURL(config.ip_source, address), { signal: controller.signal });
+    const response = await fetch(ipSource.queryURL(config.ip_source, address), {
+      signal: controller.signal, headers: ipSource.queryHeaders(config.ip_source, config.ipregistry_api_key),
+    });
     rateLimited = response.status === 429;
-    if (!response.ok) throw new Error("IPinfo 查询失败（HTTP " + response.status + "）");
-    data = ipSource.parseIPInfo(await response.json());
-  } catch (reason) {
-    error = reason.message && reason.message.startsWith("IPinfo ") ? reason.message : "IPinfo 暂时无法查询，请稍后重试";
+    if (!response.ok) error = ipSource.httpError(config.ip_source, response.status);
+    else {
+      const payload = await response.json();
+      data = config.ip_source === "ipregistry" ? ipSource.parseIPregistry(payload) : ipSource.parseIPInfo(payload);
+    }
+  } catch (_) {
+    error = sourceName + " 暂时无法查询，请稍后重试";
   } finally {
     clearTimeout(timer);
     ipController = null;
@@ -212,7 +218,7 @@ async function updateOneIP(nodes, config, now) {
   if (rateLimited) state.ip_cooldown_until = completed + IP_COOLDOWN_MS;
   await saveState();
   const latestConfig = core.normalizeIPConfig(await server.getConfig());
-  if (latestConfig.ip_source !== config.ip_source) return;
+  if (latestConfig.ip_source !== config.ip_source || latestConfig.ipregistry_api_key !== config.ipregistry_api_key) return;
   const latestNodes = await server.call("admin:listClients", {});
   // 同一地址的节点共用一次查询；请求期间移除节点或更换地址，不写回旧结果。
   for (const entry of nodeIPs(latestNodes).filter((entry) => entry.family === family && entry.address === address)) {
@@ -221,7 +227,7 @@ async function updateOneIP(nodes, config, now) {
     const record = data
       ? { ...data, address, family, checked_at: new Date(completed).toISOString(), error: null }
       : cached ? { ...cached, error }
-        : { address, family, asn: null, organization: "未知", type: "未知", source: "IPinfo", provider: config.ip_source, checked_at: new Date(0).toISOString(), error };
+        : { address, family, asn: null, organization: "未知", type: "未知", source: sourceName, provider: config.ip_source, checked_at: new Date(0).toISOString(), error };
     saved.ips = saved.ips.filter((ip) => ip.family !== family);
     saved.ips.push(record);
   }
@@ -337,7 +343,7 @@ async function load() {
       if (admin) {
         result.error = routeConfigError || routeError;
         const cooldown = state.ip_cooldown_until > Date.now()
-          ? "IPinfo 请求受限，自动查询暂停至 " + new Date(state.ip_cooldown_until).toISOString().slice(0, 19).replace("T", " ") + " UTC；手动刷新可绕过冷却"
+          ? ipSource.sourceName(ipConfig.ip_source) + " 请求受限，自动查询暂停至 " + new Date(state.ip_cooldown_until).toISOString().slice(0, 19).replace("T", " ") + " UTC；手动刷新可绕过冷却"
           : null;
         result.ip_error = ipConfigError || ipError || cooldown;
       }
@@ -349,7 +355,7 @@ async function load() {
     try {
       const body = typeof req.body === "string" ? JSON.parse(req.body) : JSON.parse(String(req.body));
       core.normalizeConfig(body);
-      respond(res, 200, { ok: true, independent_ip: true, homepage_targets: true });
+      respond(res, 200, { ok: true, independent_ip: true, homepage_targets: true, ip_sources: ["ipinfo", "ipregistry"] });
     } catch (error) { respond(res, 400, { error: String(error.message || "配置无效") }); }
   });
   // 两个旧入口均只检测回程；IP 信息使用独立入口，不再附带触发另一项任务。

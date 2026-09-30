@@ -34,7 +34,7 @@ export type NetworkConfig = {
   enabled: boolean; ip_enabled: boolean; guest_visible: boolean; show_home: boolean; show_details: boolean;
   all_nodes: boolean; nodes: string[]; interval_minutes: number; ip_interval_hours: number;
   concurrency: number; nexttrace_path: string;
-  ip_source: "ipinfo"; ip_guest_visible: boolean;
+  ip_source: "ipinfo" | "ipregistry"; ipregistry_api_key?: string; ip_guest_visible: boolean;
   show_asn: boolean; show_organization: boolean; show_ip_type: boolean;
 };
 export const carrierNames = { ct: "电信", cu: "联通", cm: "移动" };
@@ -135,6 +135,7 @@ export async function saveNetworkConfig(config: NetworkConfig) {
     method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
   }, 15000);
   const result = await validated.json();
+  if (config.ip_source === "ipregistry" && !result.ip_sources?.includes("ipregistry") && validated.ok) throw new Error("使用 IPregistry 请先将 Lumina 网络识别插件升级到 0.6.0 或更新版本");
   if (!validated.ok) throw new Error(result.error || "配置无效");
   if (result.independent_ip !== true || result.homepage_targets !== true) throw new Error("请先将 Lumina 网络识别插件升级到 0.5.0 或更新版本，以跟随主页延迟检测");
   await pluginRpc("admin:setPluginConfiguration", { short: "lumina-network", data });

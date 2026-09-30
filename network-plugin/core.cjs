@@ -1,6 +1,7 @@
 "use strict";
 
 const { classifyRoute } = require("./route.cjs");
+const ipSource = require("./ip.cjs");
 const NETWORKS = {
   AS4809: "CN2", AS4134: "163", AS4847: "163", AS9929: "9929", AS10099: "10099",
   AS4837: "4837", AS4808: "4837", AS58807: "CMIN2", AS58453: "CMI", AS9808: "移动骨干",
@@ -42,9 +43,11 @@ function normalizeRouteConfig(raw) {
 function normalizeIPConfig(raw) {
   raw = raw || {};
   const source = raw.ip_source === undefined ? "ipinfo" : raw.ip_source;
-  if (source !== "ipinfo") throw new Error("请选择 IPinfo 数据来源");
+  if (source !== "ipinfo" && source !== "ipregistry") throw new Error("请选择 IPinfo 或 IPregistry 数据来源");
+  const key = source === "ipregistry" ? ipSource.apiKey(raw.ipregistry_api_key) : "";
   return {
     ip_enabled: raw.ip_enabled !== false, ip_source: source,
+    ipregistry_api_key: key,
     ip_guest_visible: raw.ip_guest_visible === true,
     show_asn: raw.show_asn !== false, show_organization: raw.show_organization !== false,
     show_ip_type: raw.show_ip_type !== false,

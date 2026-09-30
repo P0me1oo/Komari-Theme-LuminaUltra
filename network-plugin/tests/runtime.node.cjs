@@ -47,6 +47,61 @@ function harness(options = {}) {
   return { context, calls, config, nodes, tasks, site, results, files, routes, advance: (ms) => { now += ms; }, state: () => JSON.parse(vm.runInContext("JSON.stringify(state)", context)) };
 }
 
+test("IPregistry 从后台携带密钥查询并缓存，切换来源不会复用 IPinfo 结果", async () => {
+  const requests = [];
+  const h = harness({ config: { enabled: false, ip_enabled: true, ip_guest_visible: true }, fetch: async (url, options) => {
+    requests.push({ url, headers: options.headers });
+    return { ok: true, status: 200, json: async () => url.includes("ipregistry.co")
+      ? { connection: { asn: 64501, organization: "新来源机构", type: "business" } }
+      : { data: { asn: { asn: 64500, name: "旧来源机构", type: "hosting" } } } };
+  } });
+  await h.context.load(); await h.context.tickIPs();
+  assert.equal(h.state().nodes.a.ips[0].provider, "ipinfo");
+  Object.assign(h.config, { ip_source: "ipregistry", ipregistry_api_key: "example-key" });
+  h.advance(60000); await h.context.tickIPs();
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].url, "https://api.ipregistry.co/203.0.113.1");
+  assert.equal(requests[1].headers.Authorization, "ApiKey example-key");
+  assert.equal(h.state().nodes.a.ips[0].asn, "AS64501");
+  assert.equal(h.state().nodes.a.ips[0].source, "IPregistry");
+  await h.context.tickIPs(); assert.equal(requests.length, 2);
+  const res = { setHeader() {}, end(body) { this.body = body; } };
+  await h.routes["GET /api/public/lumina-network/v1/results"]({ context: {} }, res);
+  assert.match(res.body, /IPregistry/);
+  assert.doesNotMatch(res.body, /example-key|ipregistry_api_key|203\.0\.113\.1/);
+  assert.doesNotMatch(JSON.stringify(h.files), /example-key|ipregistry_api_key/);
+});
+
+test("IPregistry 缺少密钥不请求外网，拒绝保存无效配置", async () => {
+  let requests = 0;
+  const h = harness({ config: { ip_enabled: true, ip_source: "ipregistry" }, fetch: async () => { requests++; } });
+  await h.context.load(); await h.context.tickIPs();
+  assert.equal(requests, 0);
+  const res = { setHeader() {}, end(body) { this.body = JSON.parse(body); } };
+  await h.routes["POST /api/admin/lumina-network/v1/validate"]({ context: { role: "admin" }, body: JSON.stringify(h.config) }, res);
+  assert.equal(res.statusCode, 400);
+  assert.match(res.body.error, /请填写 IPregistry API 密钥/);
+});
+
+for (const status of [401, 402, 403, 429, 451]) {
+  test("IPregistry HTTP " + status + " 返回对应错误，429 延用全局冷却", async () => {
+    const h = harness({ config: { enabled: false, ip_enabled: true, ip_source: "ipregistry", ipregistry_api_key: "example-key" },
+      fetch: async () => ({ ok: false, status, json: async () => ({ message: "example-key" }) }) });
+    await h.context.load(); await h.context.tickIPs();
+    assert.match(h.state().nodes.a.ips[0].error, new RegExp("IPregistry.*" + status));
+    assert.equal(h.state().ip_cooldown_until > 0, status === 429);
+    assert.doesNotMatch(JSON.stringify(h.files), /example-key/);
+  });
+}
+
+test("外网异常文本不进入 IPregistry 错误结果或缓存", async () => {
+  const h = harness({ config: { ip_enabled: true, ip_source: "ipregistry", ipregistry_api_key: "example-key" },
+    fetch: async () => { throw new Error("IPregistry example-key"); } });
+  await h.context.load(); await h.context.tickIPs();
+  assert.equal(h.state().nodes.a.ips[0].error, "IPregistry 暂时无法查询，请稍后重试");
+  assert.doesNotMatch(JSON.stringify(h.files), /example-key/);
+});
+
 test("并发限制、同节点串行、按间隔自动重新检测", async () => {
   const h = harness({ config: { concurrency: 1, interval_minutes: 5 } });
   await h.context.load(); await h.context.tick();

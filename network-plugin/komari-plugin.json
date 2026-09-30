@@ -1,8 +1,8 @@
 {
   "name": "Lumina 网络识别",
   "short": "lumina-network",
-  "description": "独立查询全部节点的 IPinfo 标签，跟随主页延迟探测点检测回程。",
-  "version": "0.5.1",
+  "description": "通过 IPinfo 或 IPregistry 独立查询全部节点的 IP 标签，跟随主页延迟探测点检测回程。",
+  "version": "0.6.0",
   "author": "P0me1oo",
   "komari": ">=1.4.3",
   "entry": "script.js",
@@ -11,7 +11,8 @@
     "type": "managed",
     "data": [
       { "key": "ip_enabled", "name": "IP 信息：自动查询全部节点", "type": "switch", "default": true },
-      { "key": "ip_source", "name": "IP 信息：数据来源", "type": "select", "options": "ipinfo", "default": "ipinfo" },
+      { "key": "ip_source", "name": "IP 信息：数据来源", "type": "select", "options": "ipinfo,ipregistry", "default": "ipinfo" },
+      { "key": "ipregistry_api_key", "name": "IPregistry API 密钥", "type": "string", "default": "", "help": "选择 IPregistry 时必填。可在主题的 IP 信息设置中填写。" },
       { "key": "show_asn", "name": "IP 标签：显示 ASN", "type": "switch", "default": true },
       { "key": "show_organization", "name": "IP 标签：显示运营商 / 机构", "type": "switch", "default": true },
       { "key": "show_ip_type", "name": "IP 标签：显示 IP 类型", "type": "switch", "default": true },

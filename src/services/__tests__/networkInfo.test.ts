@@ -87,6 +87,22 @@ describe("回程主线路展示", () => {
 });
 
 describe("网络配置与手动检测接口", () => {
+  it("IPregistry 来源和自填密钥可以保存并重新读取", async () => {
+    const selected: NetworkConfig = { ...config, ip_source: "ipregistry", ipregistry_api_key: "example-key" };
+    const fetch = vi.fn().mockResolvedValueOnce(json({ ok: true, independent_ip: true, homepage_targets: true, ip_sources: ["ipinfo", "ipregistry"] }))
+      .mockResolvedValueOnce(json({ result: null })).mockResolvedValueOnce(json({ result: { data: selected } }));
+    vi.stubGlobal("fetch", fetch);
+    await saveNetworkConfig(selected);
+    expect(JSON.parse(fetch.mock.calls[1][1].body).params.data).toMatchObject({ ip_source: "ipregistry", ipregistry_api_key: "example-key" });
+    expect(await getNetworkConfig()).toEqual(selected);
+  });
+
+  it("插件未支持 IPregistry 时不提交保存", async () => {
+    const fetch = vi.fn().mockResolvedValue(json({ ok: true, independent_ip: true, homepage_targets: true }));
+    vi.stubGlobal("fetch", fetch);
+    await expect(saveNetworkConfig({ ...config, ip_source: "ipregistry", ipregistry_api_key: "example-key" })).rejects.toThrow("0.6.0");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
   it("读取与插件后台相同的配置，并兼容字符串形式的指定节点", async () => {
     const fetch = vi.fn().mockResolvedValue(json({ result: { data: { ...config, nodes: '["a"]', targets: "旧自定义地址已停用" } } }));
     vi.stubGlobal("fetch", fetch);

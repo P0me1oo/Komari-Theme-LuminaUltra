@@ -561,7 +561,7 @@ export function installDevMockApi() {
       return json({ added: 0, queued: 0, running: 0, ip_added: ipAdded, ip_queued: ipAdded }, { status: 202 });
     }
     if (url.pathname === "/api/admin/lumina-network/v1/validate") {
-      return adminMode ? json({ ok: true, independent_ip: true, homepage_targets: true }) : json({ error: "请先登录" }, { status: 403 });
+      return adminMode ? json({ ok: true, independent_ip: true, homepage_targets: true, ip_sources: ["ipinfo", "ipregistry"] }) : json({ error: "请先登录" }, { status: 403 });
     }
     if (url.pathname === "/api/rpc2" && request.method === "POST") {
       const payload = await request.clone().json();

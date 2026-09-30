@@ -62,6 +62,10 @@ async function verify() {
   if (state.manual_ips.length !== 0 || state.nodes["test-node"].ips[0].asn !== "AS64500") throw new Error("手动 IP 查询未完成");
   await server.routes["GET /api/public/lumina-network/v1/results"]({context: {role: "admin"}}, res);
   if (res.body.nodes[0].ips[0].type !== "机房" || res.body.nodes[0].routes[0].checked_at !== null) throw new Error("完整结果格式不正确");
+  const registryConfig = core.normalizeIPConfig({ip_source: "ipregistry", ipregistry_api_key: "example-key"});
+  if (ipSource.queryHeaders(registryConfig.ip_source, registryConfig.ipregistry_api_key).Authorization !== "ApiKey example-key") throw new Error("IPregistry 请求头不正确");
+  const registryData = ipSource.parseIPregistry({connection: {asn: 64501, organization: "测试网络", type: "hosting"}});
+  if (registryData.asn !== "AS64501" || registryData.type !== "机房") throw new Error("IPregistry 解析失败");
   await fs.promises.readFile(statePath + "." + revision % 2, "utf8");
   return true;
 }

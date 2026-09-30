@@ -66,7 +66,8 @@ export function NetworkSettings({
             ] as const).map(([key, label]) => <label key={key}><input type="checkbox" checked={config[key]} onChange={(event) => patch({ [key]: event.target.checked })} />{label}</label>)}
           </div>
           <div className="network-settings-fields">
-            <label>数据来源<select value={config.ip_source} onChange={(event) => patch({ ip_source: event.target.value as NetworkConfig["ip_source"] })}><option value="ipinfo">IPinfo</option></select></label>
+            <label>数据来源<select value={config.ip_source} onChange={(event) => patch({ ip_source: event.target.value as NetworkConfig["ip_source"] })}><option value="ipinfo">IPinfo</option><option value="ipregistry">IPregistry</option></select></label>
+            {config.ip_source === "ipregistry" && <label>IPregistry API 密钥<input type="password" autoComplete="new-password" required value={config.ipregistry_api_key ?? ""} onChange={(event) => patch({ ipregistry_api_key: event.target.value })} /></label>}
             <label>更新间隔（小时）<input type="number" min={1} max={720} required value={config.ip_interval_hours} onChange={(event) => patch({ ip_interval_hours: Number(event.target.value) })} /></label>
           </div>
           <div className="network-settings-actions">

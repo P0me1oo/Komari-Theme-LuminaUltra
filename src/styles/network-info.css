@@ -10,8 +10,9 @@
 .node-ip-badges { gap: 4px 8px; }
 .node-ip-attribute {
   display: inline-block;
+  flex: 0 0 auto;
   min-width: 0;
-  max-width: min(100%, 12rem);
+  max-width: 100%;
   padding: 0 7px;
   border: 1px solid var(--hairline);
   border-radius: 8px;

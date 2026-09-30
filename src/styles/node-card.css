@@ -44,10 +44,10 @@
 }
 
 .server-card-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 6px 12px;
   min-width: 0;
 }
 
@@ -137,6 +137,7 @@
 
 .server-card-subtitle-row {
   display: flex;
+  grid-column: 1 / -1;
   min-width: 0;
   flex-wrap: wrap;
   align-items: center;

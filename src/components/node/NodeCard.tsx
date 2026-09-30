@@ -223,14 +223,6 @@ function NodeCardHeader({
             {node.name}
           </Link>
         </div>
-        <div className="server-card-subtitle-row">
-          {subtitle && (
-            <span className="server-card-subtitle" title={subtitle}>
-              {subtitle}
-            </span>
-          )}
-          <NodeIPBadges uuid={node.uuid} ipv4={node.ipv4} ipv6={node.ipv6} showStack={showIpStackBadges} />
-        </div>
       </div>
       <div className="server-card-actions">
         {showTodayTraffic && <NodeTodayTrafficPopover uuid={node.uuid} />}
@@ -242,6 +234,14 @@ function NodeCardHeader({
         >
           <OsLogo value={node.os} size={15} />
         </Link>
+      </div>
+      <div className="server-card-subtitle-row">
+        {subtitle && (
+          <span className="server-card-subtitle" title={subtitle}>
+            {subtitle}
+          </span>
+        )}
+        <NodeIPBadges uuid={node.uuid} ipv4={node.ipv4} ipv6={node.ipv6} showStack={showIpStackBadges} />
       </div>
     </header>
   );

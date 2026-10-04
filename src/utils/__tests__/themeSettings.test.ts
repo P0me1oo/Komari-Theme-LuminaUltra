@@ -9,6 +9,26 @@ import {
 import { DEFAULT_BACKGROUND_VIDEO_URL } from "@/utils/background";
 
 describe("normalizeThemeSettings", () => {
+  it("旧设置保留自动单位和人民币，新单位可以分别保存", () => {
+    const defaults = {
+      networkUnit: "auto", memoryUnit: "auto", trafficUnit: "auto",
+      diskUnit: "auto", assetCurrency: "CNY",
+    };
+    expect(normalizeThemeSettings({})).toMatchObject(defaults);
+    expect(normalizeThemeSettings({
+      networkUnit: "Mbps", memoryUnit: "TB", trafficUnit: "GB",
+      diskUnit: "MB", assetCurrency: "USD",
+    })).toMatchObject({
+      networkUnit: "Mbps", memoryUnit: "TB", trafficUnit: "GB",
+      diskUnit: "MB", assetCurrency: "USD",
+    });
+    expect(normalizeThemeSettings({ networkUnit: "MB/S" }).networkUnit).toBe("MB/S");
+    expect(normalizeThemeSettings({
+      networkUnit: "wrong", memoryUnit: 1, trafficUnit: "PB",
+      diskUnit: null, assetCurrency: "EUR",
+    } as never)).toMatchObject(defaults);
+  });
+
   it("defaults to image mode with the bundled desktop video ready to enable", () => {
     const settings = normalizeThemeSettings({});
 

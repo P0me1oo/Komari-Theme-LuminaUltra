@@ -16,7 +16,8 @@ import {
   type NodeTodayTrafficView,
 } from "@/hooks/useTodayTrafficStats";
 import { useFineHover } from "@/hooks/useMediaQuery";
-import { formatBytes, formatByteRateLabel, formatClockTime } from "@/utils/format";
+import { formatClockTime } from "@/utils/format";
+import { useDisplayUnits } from "@/hooks/useDisplayUnits";
 import {
   consumeTriggerFocusSuppression,
   INITIAL_NODE_TODAY_TRAFFIC_POPOVER_STATE,
@@ -262,6 +263,7 @@ export function NodeTodayTrafficPopover({
 }
 
 function TodayTrafficPopoverBody({ traffic }: { traffic: NodeTodayTrafficView }) {
+  const { formatTraffic, formatSpeedLabel } = useDisplayUnits();
   const {
     stat,
     isPending,
@@ -320,12 +322,12 @@ function TodayTrafficPopoverBody({ traffic }: { traffic: NodeTodayTrafficView })
         <PopoverRow
           icon={<ArrowUp size={12} strokeWidth={2.4} />}
           label="上行"
-          value={formatBytes(stat.trafficUp)}
+          value={formatTraffic(stat.trafficUp)}
         />
         <PopoverRow
           icon={<ArrowDown size={12} strokeWidth={2.4} />}
           label="下行"
-          value={formatBytes(stat.trafficDown)}
+          value={formatTraffic(stat.trafficDown)}
         />
       </div>
       <div className="node-traffic-popover-head is-peak">峰值速度</div>
@@ -333,7 +335,7 @@ function TodayTrafficPopoverBody({ traffic }: { traffic: NodeTodayTrafficView })
         <PopoverRow
           icon={<ArrowUp size={12} strokeWidth={2.4} />}
           label="上行"
-          value={formatByteRateLabel(stat.peakUp)}
+          value={formatSpeedLabel(stat.peakUp)}
           note={
             stat.peakUp > 0 && stat.peakUpAt != null
               ? formatClockTime(stat.peakUpAt)
@@ -343,7 +345,7 @@ function TodayTrafficPopoverBody({ traffic }: { traffic: NodeTodayTrafficView })
         <PopoverRow
           icon={<ArrowDown size={12} strokeWidth={2.4} />}
           label="下行"
-          value={formatByteRateLabel(stat.peakDown)}
+          value={formatSpeedLabel(stat.peakDown)}
           note={
             stat.peakDown > 0 && stat.peakDownAt != null
               ? formatClockTime(stat.peakDownAt)

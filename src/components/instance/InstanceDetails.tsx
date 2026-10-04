@@ -3,13 +3,14 @@ import { RefreshCw } from "lucide-react";
 import { useNodeMeta, useNodeMetrics } from "@/hooks/useNode";
 import { useMinuteClock } from "@/hooks/useClock";
 import { useTodayTrafficStats } from "@/hooks/useTodayTrafficStats";
+import { useDisplayUnits } from "@/hooks/useDisplayUnits";
+import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { InstanceSwitcher } from "./InstanceSwitcher";
 import {
   formatTodayPeakValue,
   formatTodayTrafficValue,
 } from "./instanceTodayTrafficFormat";
 import {
-  formatBytes,
   formatUptimeDays,
 } from "@/utils/format";
 import { resolveTrafficUsage } from "@/utils/traffic";
@@ -29,6 +30,8 @@ export function InstanceDetails({
   uuid: string;
   onNodeReady?: () => (() => void) | void;
 }) {
+  const { formatMemory, formatDisk, formatTraffic, formatSpeedLabel } = useDisplayUnits();
+  const { trafficUnit, networkUnit } = useThemeSettings();
   const now = useMinuteClock();
   const meta = useNodeMeta(uuid);
   const metrics = useNodeMetrics(uuid);
@@ -82,16 +85,16 @@ export function InstanceDetails({
 
         <div className="instance-info-group">
           <div className="instance-info-group-title">资源</div>
-          <InfoRow label="内存" value={`${formatBytes(metrics.ramUsed)} / ${formatBytes(metrics.ramTotal)}`} />
+          <InfoRow label="内存" value={`${formatMemory(metrics.ramUsed)} / ${formatMemory(metrics.ramTotal)}`} />
           <InfoRow
             label="Swap"
             value={
               metrics.swapTotal > 0
-                ? `${formatBytes(metrics.swapUsed)} / ${formatBytes(metrics.swapTotal)}`
+                ? `${formatMemory(metrics.swapUsed)} / ${formatMemory(metrics.swapTotal)}`
                 : "无"
             }
           />
-          <InfoRow label="磁盘" value={`${formatBytes(metrics.diskUsed)} / ${formatBytes(metrics.diskTotal)}`} />
+          <InfoRow label="磁盘" value={`${formatDisk(metrics.diskUsed)} / ${formatDisk(metrics.diskTotal)}`} />
           <InfoRow
             label="负载"
             value={`${metrics.load1.toFixed(2)} | ${metrics.load5.toFixed(2)} | ${metrics.load15.toFixed(2)}`}
@@ -106,7 +109,7 @@ export function InstanceDetails({
           <div className="instance-info-group-title">网络</div>
           <InfoRow
             label={isOnline ? "实时网络" : "缓存网络"}
-            value={`↑ ${formatBytes(metrics.netUp)}/s · ↓ ${formatBytes(metrics.netDown)}/s`}
+            value={`↑ ${formatSpeedLabel(metrics.netUp)} · ↓ ${formatSpeedLabel(metrics.netDown)}`}
           />
           <InfoRow label={isOnline ? "最近更新" : "最后上报"} value={lastUpdated} />
           <InfoRow
@@ -118,6 +121,7 @@ export function InstanceDetails({
                     todayStat,
                     trafficQuery.isPending,
                     trafficQuery.isError,
+                    trafficUnit,
                   )}
                 </span>
                 <button
@@ -136,12 +140,12 @@ export function InstanceDetails({
           />
           <InfoRow
             label="峰值速度"
-            value={formatTodayPeakValue(todayStat, trafficQuery.isPending)}
+            value={formatTodayPeakValue(todayStat, trafficQuery.isPending, networkUnit)}
           />
           <div className="instance-info-item is-stack">
             <span className="instance-info-label">总流量</span>
             <div className="instance-info-traffic">
-              <span className="instance-info-value">{`↑ ${formatBytes(metrics.trafficUp)} · ↓ ${formatBytes(metrics.trafficDown)}`}</span>
+              <span className="instance-info-value">{`↑ ${formatTraffic(metrics.trafficUp)} · ↓ ${formatTraffic(metrics.trafficDown)}`}</span>
               <div
                 className={`instance-progress-track${trafficUsage.unlimited ? " is-unlimited" : ""}`}
                 aria-hidden
@@ -155,8 +159,8 @@ export function InstanceDetails({
               </div>
               <span className="instance-info-note">
                 {trafficUsage.unlimited
-                  ? `${formatBytes(trafficUsage.used)} / ∞`
-                  : `${formatBytes(trafficUsage.used)} / ${formatBytes(trafficUsage.limit)}`}
+                  ? `${formatTraffic(trafficUsage.used)} / ∞`
+                  : `${formatTraffic(trafficUsage.used)} / ${formatTraffic(trafficUsage.limit)}`}
               </span>
             </div>
           </div>

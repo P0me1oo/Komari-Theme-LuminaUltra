@@ -304,6 +304,11 @@ function applyAvailableClientAssignments(
 // 刻意不标注返回类型:让推断给出全字段必填的具体类型,ThemeDraft 才能安全地 Omit/扩展。
 function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
   return {
+    networkUnit: settings.networkUnit,
+    memoryUnit: settings.memoryUnit,
+    trafficUnit: settings.trafficUnit,
+    diskUnit: settings.diskUnit,
+    assetCurrency: settings.assetCurrency,
     defaultAppearance: settings.defaultAppearance,
     desktopNodeViewMode: settings.desktopNodeViewMode,
     mobileNodeViewMode: settings.mobileNodeViewMode,
@@ -1561,6 +1566,53 @@ export function ThemeManage() {
               ))}
             </div>
           </div>
+        </div>
+      </InstancePanel>
+
+      <InstancePanel title="显示单位">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label className="flex flex-col gap-2 text-[13px] font-semibold">
+            网络速度
+            <select
+              className="surface-inset px-3 py-2"
+              value={draft.networkUnit}
+              onChange={(event) => patch("networkUnit", event.target.value as ThemeDraft["networkUnit"])}
+            >
+              <option value="auto">自动</option>
+              <option value="Mbps">Mbps / Gbps</option>
+              <option value="MB/S">MB/S / GB/S</option>
+            </select>
+          </label>
+          {([
+            { field: "memoryUnit", label: "内存" },
+            { field: "trafficUnit", label: "流量" },
+            { field: "diskUnit", label: "硬盘" },
+          ] as const).map(({ field, label }) => (
+            <label key={field} className="flex flex-col gap-2 text-[13px] font-semibold">
+              {label}
+              <select
+                className="surface-inset px-3 py-2"
+                value={draft[field]}
+                onChange={(event) => patch(field, event.target.value as ThemeDraft[typeof field])}
+              >
+                <option value="auto">自动</option>
+                <option value="TB">TB</option>
+                <option value="GB">GB</option>
+                <option value="MB">MB</option>
+              </select>
+            </label>
+          ))}
+          <label className="flex flex-col gap-2 text-[13px] font-semibold">
+            资产币种
+            <select
+              className="surface-inset px-3 py-2"
+              value={draft.assetCurrency}
+              onChange={(event) => patch("assetCurrency", event.target.value as ThemeDraft["assetCurrency"])}
+            >
+              <option value="CNY">人民币（¥）</option>
+              <option value="USD">美元（$）</option>
+            </select>
+          </label>
         </div>
       </InstancePanel>
 

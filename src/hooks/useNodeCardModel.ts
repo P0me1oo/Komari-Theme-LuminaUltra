@@ -9,13 +9,12 @@ import {
   usePingBuckets,
 } from "@/hooks/usePingOverview";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
+import { useDisplayUnits } from "@/hooks/useDisplayUnits";
 import type { HomepagePingDisplayLine, HomepagePingLine } from "@/types/komari";
 import { formatRenewalPrice } from "@/utils/billing";
 import { getExpireTextColor } from "@/utils/expireStatus";
 import { getTrafficResetDisplay } from "@/utils/trafficReset";
 import {
-  formatBytes,
-  formatByteRate,
   formatExpireDays,
   formatUptimeDays,
   joinDisplayParts,
@@ -55,6 +54,7 @@ export function useNodeCardModel(
   }: NodeCardModelOptions = {},
 ) {
   const { meta, metrics, trafficTrend } = useNodeCardSnapshots(uuid);
+  const { formatTraffic, formatSpeed } = useDisplayUnits();
   const {
     showCardGroup,
     fakePingForUnbound,
@@ -226,17 +226,17 @@ export function useNodeCardModel(
       metrics.trafficDown,
       meta.traffic_limit,
     );
-    const trafficUsedLabel = formatBytes(trafficUsage.used);
+    const trafficUsedLabel = formatTraffic(trafficUsage.used);
     // 不限量时渲染成 ∞，让剩余值和"已用/上限"那行与限量情况保持一致
     //（"剩余 ∞" + "2.73 GB / ∞"）。
-    const trafficLimitLabel = trafficUsage.unlimited ? "∞" : formatBytes(trafficUsage.limit);
+    const trafficLimitLabel = trafficUsage.unlimited ? "∞" : formatTraffic(trafficUsage.limit);
     const trafficColor = trafficUsage.unlimited
       ? "var(--status-success)"
       : trafficUsageColor(trafficUsage.fraction);
     const traffic: TrafficDisplay = {
       fraction: trafficUsage.fraction,
       color: trafficColor,
-      remainingLabel: trafficUsage.unlimited ? "∞" : formatBytes(trafficUsage.remaining),
+      remainingLabel: trafficUsage.unlimited ? "∞" : formatTraffic(trafficUsage.remaining),
       detail: `${trafficUsedLabel} / ${trafficLimitLabel}`,
       typeLabel: trafficTypeLabel(meta.traffic_limit_type),
     };
@@ -252,12 +252,14 @@ export function useNodeCardModel(
       ...pingModel,
       uptime: formatUptimeDays(metrics.uptime),
       loadFraction: Math.max(0, Math.min(1, metrics.load1 / loadBaseline)),
-      upRate: formatByteRate(metrics.netUp),
-      downRate: formatByteRate(metrics.netDown),
+      upRate: formatSpeed(metrics.netUp),
+      downRate: formatSpeed(metrics.netDown),
       isOnline: metrics.online === true,
       isOffline: metrics.online === false,
     };
   }, [
+    formatTraffic,
+    formatSpeed,
     homepagePingLines,
     meta,
     metrics,

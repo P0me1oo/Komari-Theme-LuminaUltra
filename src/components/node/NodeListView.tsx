@@ -10,8 +10,8 @@ import { useNodeCardModel } from "@/hooks/useNodeCardModel";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { useMetricColorsVersion } from "@/hooks/useMetricColors";
-import { formatBytes } from "@/utils/format";
-import { speedRateColor } from "@/utils/metricTone";
+import { useDisplayUnits } from "@/hooks/useDisplayUnits";
+import { speedRateColorFromBytes } from "@/utils/metricTone";
 import { CanvasStrip, fillRoundedRect, safeCanvasColor } from "./CanvasStrip";
 import { LatencyBars } from "./LatencyBars";
 import { HealthBucketTooltip } from "./HealthBucketTooltip";
@@ -228,6 +228,7 @@ function ListLatency({
 }
 
 const NodeRow = memo(function NodeRow({ uuid, showCosts }: { uuid: string; showCosts: boolean }) {
+  const { formatTraffic } = useDisplayUnits();
   const { resolvedAppearance } = usePreferences();
   const themeSettings = useThemeSettings();
   const colorsVersion = useMetricColorsVersion();
@@ -355,13 +356,13 @@ const NodeRow = memo(function NodeRow({ uuid, showCosts }: { uuid: string; showC
           icon={<ArrowUp size={11} strokeWidth={2.4} />}
           value={upRate.value}
           unit={upRate.unit}
-          color={speedRateColor(upRate.unit)}
+          color={speedRateColorFromBytes(node.netUp)}
         />
         <StackLine
           icon={<ArrowDown size={11} strokeWidth={2.4} />}
           value={downRate.value}
           unit={downRate.unit}
-          color={speedRateColor(downRate.unit)}
+          color={speedRateColorFromBytes(node.netDown)}
         />
       </div>
 
@@ -370,8 +371,8 @@ const NodeRow = memo(function NodeRow({ uuid, showCosts }: { uuid: string; showC
         title={`剩余 ${traffic.remainingLabel} · ${traffic.detail}`}
       >
         <div className="node-list-traffic-rows">
-          <StackLine icon={<ArrowUp size={11} strokeWidth={2.1} />} value={formatBytes(node.trafficUp)} />
-          <StackLine icon={<ArrowDown size={11} strokeWidth={2.1} />} value={formatBytes(node.trafficDown)} />
+          <StackLine icon={<ArrowUp size={11} strokeWidth={2.1} />} value={formatTraffic(node.trafficUp)} />
+          <StackLine icon={<ArrowDown size={11} strokeWidth={2.1} />} value={formatTraffic(node.trafficDown)} />
         </div>
         <span className="node-list-traffic-quota" style={{ color: traffic.color }}>
           {usedPct}

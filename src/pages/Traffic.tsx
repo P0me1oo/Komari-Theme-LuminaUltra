@@ -7,7 +7,7 @@ import { useMinuteClock } from "@/hooks/useClock";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTodayTrafficStats } from "@/hooks/useTodayTrafficStats";
 import { useVisibleNodes } from "@/hooks/useVisibleNodes";
-import { formatByteRateLabel, formatBytes } from "@/utils/format";
+import { useDisplayUnits } from "@/hooks/useDisplayUnits";
 import type { NodeInfo } from "@/types/komari";
 import type { TodayTrafficSample, TodayTrafficStat } from "@/utils/trafficStats";
 
@@ -41,9 +41,10 @@ function formatPeakTime(timeMs: number | null, value: number) {
 }
 
 function PeakValue({ value, timeMs }: { value: number; timeMs: number | null }) {
+  const { formatSpeedLabel } = useDisplayUnits();
   return (
     <span className="traffic-peak-value">
-      <strong>{formatByteRateLabel(value)}</strong>
+      <strong>{formatSpeedLabel(value)}</strong>
       <small>{formatPeakTime(timeMs, value)}</small>
     </span>
   );
@@ -56,6 +57,7 @@ function PeakSummaryRow({
   direction: "up" | "down";
   detail: TrafficDetail | null;
 }) {
+  const { formatSpeedLabel } = useDisplayUnits();
   const value = direction === "up" ? detail?.stat.peakUp ?? 0 : detail?.stat.peakDown ?? 0;
   const timeMs = direction === "up" ? detail?.stat.peakUpAt ?? null : detail?.stat.peakDownAt ?? null;
   const Icon = direction === "up" ? ArrowUp : ArrowDown;
@@ -67,7 +69,7 @@ function PeakSummaryRow({
         {direction === "up" ? "上行" : "下行"}
       </span>
       <span className="traffic-summary-peak-main">
-        <strong>{detail ? formatByteRateLabel(value) : "—"}</strong>
+        <strong>{detail ? formatSpeedLabel(value) : "—"}</strong>
         <small>
           {detail && value > 0 ? `${detail.node.name} · ${formatPeakTime(timeMs, value)}` : "暂无峰值"}
         </small>
@@ -130,6 +132,7 @@ function TrafficSampleChart({
 }
 
 export function Traffic() {
+  const { formatTraffic } = useDisplayUnits();
   const [expandedUuid, setExpandedUuid] = useState<string | null>(null);
   const now = useMinuteClock();
   const isMobileLayout = useMediaQuery(TRAFFIC_MOBILE_QUERY);
@@ -224,11 +227,11 @@ export function Traffic() {
                 <span>{DAY_FORMATTER.format(now)}</span>
               </div>
               <strong className="traffic-summary-total">
-                {sampledDetails.length > 0 ? formatBytes(totalUp + totalDown) : "—"}
+                {sampledDetails.length > 0 ? formatTraffic(totalUp + totalDown) : "—"}
               </strong>
               <div className="traffic-summary-directions">
-                <span><ArrowUp size={13} aria-hidden />{formatBytes(totalUp)}</span>
-                <span><ArrowDown size={13} aria-hidden />{formatBytes(totalDown)}</span>
+                <span><ArrowUp size={13} aria-hidden />{formatTraffic(totalUp)}</span>
+                <span><ArrowDown size={13} aria-hidden />{formatTraffic(totalDown)}</span>
               </div>
             </article>
 
@@ -285,8 +288,8 @@ export function Traffic() {
                         <td data-numeric data-strong>
                           {stat.hasSamples ? (
                             <span className="traffic-volume-value">
-                              <strong>{formatBytes(total)}</strong>
-                              <small>↑ {formatBytes(stat.trafficUp)} · ↓ {formatBytes(stat.trafficDown)}</small>
+                              <strong>{formatTraffic(total)}</strong>
+                              <small>↑ {formatTraffic(stat.trafficUp)} · ↓ {formatTraffic(stat.trafficDown)}</small>
                             </span>
                           ) : (
                             <span className="traffic-no-data">无数据</span>
@@ -335,7 +338,7 @@ export function Traffic() {
                       <span>{node.name}</span>
                     </Link>
                     <div className="traffic-node-card-actions">
-                      <strong>{stat.hasSamples ? formatBytes(total) : "无数据"}</strong>
+                      <strong>{stat.hasSamples ? formatTraffic(total) : "无数据"}</strong>
                       <TrafficDetailToggle
                         expanded={expanded}
                         controlsId={detailId}
@@ -346,8 +349,8 @@ export function Traffic() {
                   {stat.hasSamples && (
                     <>
                       <div className="traffic-node-card-directions">
-                        <span>↑ {formatBytes(stat.trafficUp)}</span>
-                        <span>↓ {formatBytes(stat.trafficDown)}</span>
+                        <span>↑ {formatTraffic(stat.trafficUp)}</span>
+                        <span>↓ {formatTraffic(stat.trafficDown)}</span>
                       </div>
                       <dl className="traffic-node-card-peaks">
                         <div>

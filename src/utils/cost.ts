@@ -1,4 +1,5 @@
 import type { NodeInfo } from "@/types/komari";
+import type { AssetCurrency } from "@/utils/units";
 import { normalizeBillingCycle } from "@/utils/billing";
 import { fetchWithTimeout } from "@/utils/abort";
 import { resolveExpireTimestamp } from "@/utils/format";
@@ -590,4 +591,35 @@ const CNY_MONEY_FORMATTER = new Intl.NumberFormat("zh-CN", {
 
 export function formatCnyMoney(value: number) {
   return `¥ ${CNY_MONEY_FORMATTER.format(value || 0)}`;
+}
+
+export function assetCurrencySymbol(currency: AssetCurrency) {
+  return currency === "USD" ? "$" : "¥";
+}
+
+/** 统计与收购记录仍以人民币计算，只在展示时按同一份汇率换算。 */
+export function convertAssetAmount(
+  amountCny: number,
+  currency: AssetCurrency,
+  rates: Record<string, number> | undefined,
+): number | null {
+  if (!Number.isFinite(amountCny)) return null;
+  if (currency === "CNY") return amountCny;
+  const cnyRate = rates?.CNY;
+  const usdRate = rates?.USD;
+  if (!cnyRate || !usdRate || !Number.isFinite(cnyRate) || !Number.isFinite(usdRate) || cnyRate < 0 || usdRate < 0) {
+    return null;
+  }
+  return amountCny / cnyRate * usdRate;
+}
+
+export function formatAssetMoney(value: number | null, currency: AssetCurrency): string {
+  return value == null || !Number.isFinite(value)
+    ? "—"
+    : `${assetCurrencySymbol(currency)} ${CNY_MONEY_FORMATTER.format(value)}`;
+}
+
+export function formatSignedAssetMoney(value: number | null, currency: AssetCurrency): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return `${value < 0 ? "-" : "+"}${formatAssetMoney(Math.abs(value), currency)}`;
 }

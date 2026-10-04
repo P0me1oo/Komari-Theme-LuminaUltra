@@ -30,7 +30,10 @@ import {
   fillMissingMetricPoints,
   interpolateMetricGaps,
 } from "./chartData";
-import { formatBytes, formatTrafficRateLabel } from "@/utils/format";
+import { formatNetworkChartRateLabel } from "@/utils/format";
+import { useDisplayUnits } from "@/hooks/useDisplayUnits";
+import { useThemeSettings } from "@/hooks/useThemeSettings";
+import type { NetworkRateUnit } from "@/utils/units";
 import { historyChartRangeSeconds, historyCoverageLabel } from "@/utils/historyRange";
 import { resolveLoadRecordTotals } from "@/utils/loadMetrics";
 import { usePreferences } from "@/hooks/usePreferences";
@@ -146,9 +149,9 @@ function pointFromNode(node: NodeMetrics): ChartPoint {
   };
 }
 
-function formatTooltipValue(key: string, value: number | null | undefined, unit: string) {
+function formatTooltipValue(key: string, value: number | null | undefined, unit: string, networkUnit: NetworkRateUnit) {
   if (value == null || !Number.isFinite(value)) return "—";
-  if (key === "netIn" || key === "netOut") return formatTrafficRateLabel(value);
+  if (key === "netIn" || key === "netOut") return formatNetworkChartRateLabel(value, networkUnit);
   if (unit === "%") return `${value.toFixed(2)}%`;
   if (key === "process" || key === "connections" || key === "udp") return `${Math.round(value)}`;
   return value.toFixed(2);
@@ -161,9 +164,9 @@ function formatPercentAxisValue(value: number, min: number, max: number) {
   return `${Math.round(value)}%`;
 }
 
-function formatNetworkAxisValue(value: number) {
+function formatNetworkAxisValue(value: number, networkUnit: NetworkRateUnit) {
   if (!Number.isFinite(value) || value <= 0) return "";
-  return formatTrafficRateLabel(value);
+  return formatNetworkChartRateLabel(value, networkUnit);
 }
 
 function formatCountAxisValue(value: number, min: number, max: number) {
@@ -185,6 +188,7 @@ function buildBaseOptions({
   axisKind,
   axisSize = 52,
   xRange,
+  networkUnit,
 }: {
   title: string;
   keys: string[];
@@ -195,6 +199,7 @@ function buildBaseOptions({
   axisKind: "percent" | "network" | "count";
   axisSize?: number;
   xRange?: [number, number] | null;
+  networkUnit: NetworkRateUnit;
 }): Omit<uPlot.Options, "width" | "height"> {
   const isDark = resolvedAppearance === "dark";
   const { grid, text } = getAxisColors(isDark);
@@ -225,7 +230,7 @@ function buildBaseOptions({
           const max = Number(self.scales.y.max ?? 0);
           return splits.map((value) => {
             if (value === 0 && axisKind !== "percent") return "";
-            if (axisKind === "network") return formatNetworkAxisValue(value);
+            if (axisKind === "network") return formatNetworkAxisValue(value, networkUnit);
             if (axisKind === "percent") return formatPercentAxisValue(value, min, max);
             return formatCountAxisValue(value, min, max);
           });
@@ -288,6 +293,7 @@ const ChartCard = memo(function ChartCard({
   xRange?: [number, number] | null;
 }) {
   const { w, h, ref: chartSizeRef } = useResponsiveChartSize("grid");
+  const { networkUnit } = useThemeSettings();
   const dataRef = useRef<uPlot.AlignedData>([[]]);
   const [tooltip, setTooltip] = useState<ChartTooltipState>({
     show: false,
@@ -312,8 +318,9 @@ const ChartCard = memo(function ChartCard({
         axisKind,
         axisSize,
         xRange,
+        networkUnit,
       }),
-    [axisKind, axisSize, colors, keys, rangeHours, resolvedAppearance, spanGaps, title, xRange],
+    [axisKind, axisSize, colors, keys, rangeHours, resolvedAppearance, spanGaps, title, xRange, networkUnit],
   );
 
   const enhancedOptions = useMemo<Omit<uPlot.Options, "width" | "height">>(() => {
@@ -329,6 +336,7 @@ const ChartCard = memo(function ChartCard({
             key,
             dataRef.current[keyIndex + 1]?.[idx] as number | null | undefined,
             unit,
+            networkUnit,
           ),
           color: colors[keyIndex] ?? colors[0],
         })),
@@ -342,7 +350,7 @@ const ChartCard = memo(function ChartCard({
         setCursor: [tooltip.onSetCursor],
       },
     };
-  }, [colors, keys, baseOptions, rangeHours, unit]);
+  }, [colors, keys, baseOptions, rangeHours, unit, networkUnit]);
 
   const chartOptions = useMemo<uPlot.Options>(
     () => ({ ...enhancedOptions, width: w, height: h }) as uPlot.Options,
@@ -386,6 +394,8 @@ export function LoadChart({
   hours: number;
   active?: boolean;
 }) {
+  const { formatMemory, formatDisk, formatTraffic } = useDisplayUnits();
+  const { networkUnit } = useThemeSettings();
   const queryHours = hours === 0 ? 1 : hours;
   const { data, isError, isFetching, isLoading, refetch } = useLoadRecords(
     uuid,
@@ -583,18 +593,18 @@ export function LoadChart({
           uuid={uuid}
           value={
             isRealtime && node
-              ? `${formatBytes(node.ramUsed)} / ${formatBytes(node.ramTotal)}`
+              ? `${formatMemory(node.ramUsed)} / ${formatMemory(node.ramTotal)}`
               : latestHistoryRecord && latestHistoryTotals
-                ? `${formatBytes(latestHistoryRecord.ram)} / ${formatBytes(latestHistoryTotals.ramTotal)}`
+                ? `${formatMemory(latestHistoryRecord.ram)} / ${formatMemory(latestHistoryTotals.ramTotal)}`
                 : "—"
           }
           note={
             isRealtime && node
               ? node.swapTotal
-                ? `Swap ${formatBytes(node.swapUsed)} / ${formatBytes(node.swapTotal)}`
+                ? `Swap ${formatMemory(node.swapUsed)} / ${formatMemory(node.swapTotal)}`
                 : "Swap 无"
               : latestHistoryRecord && latestHistoryTotals && latestHistoryTotals.swapTotal > 0
-                ? `Swap ${formatBytes(latestHistoryRecord.swap)} / ${formatBytes(latestHistoryTotals.swapTotal)}`
+                ? `Swap ${formatMemory(latestHistoryRecord.swap)} / ${formatMemory(latestHistoryTotals.swapTotal)}`
                 : "Swap 无"
           }
           points={points}
@@ -613,9 +623,9 @@ export function LoadChart({
           uuid={uuid}
           value={
             isRealtime && node
-              ? `${formatBytes(node.diskUsed)} / ${formatBytes(node.diskTotal)}`
+              ? `${formatDisk(node.diskUsed)} / ${formatDisk(node.diskTotal)}`
               : latestHistoryRecord && latestHistoryTotals
-                ? `${formatBytes(latestHistoryRecord.disk)} / ${formatBytes(latestHistoryTotals.diskTotal)}`
+                ? `${formatDisk(latestHistoryRecord.disk)} / ${formatDisk(latestHistoryTotals.diskTotal)}`
                 : "—"
           }
           note="已用空间"
@@ -635,15 +645,15 @@ export function LoadChart({
           uuid={uuid}
           value={
             isRealtime && node
-              ? `${formatTrafficRateLabel(node.netDown)} / ${formatTrafficRateLabel(node.netUp)}`
+              ? `${formatNetworkChartRateLabel(node.netDown, networkUnit)} / ${formatNetworkChartRateLabel(node.netUp, networkUnit)}`
               : latestHistoryRecord
-                ? `${formatTrafficRateLabel(latestHistoryRecord.net_in ?? 0)} / ${formatTrafficRateLabel(latestHistoryRecord.net_out ?? 0)}`
+                ? `${formatNetworkChartRateLabel(latestHistoryRecord.net_in ?? 0, networkUnit)} / ${formatNetworkChartRateLabel(latestHistoryRecord.net_out ?? 0, networkUnit)}`
                 : "—"
           }
           note={
             <span className="instance-overview-multi">
-              <span className="inline-flex items-center gap-1"><ArrowDown size={11} />{isRealtime && node ? formatBytes(node.trafficDown) : latestHistoryRecord ? formatBytes(latestHistoryRecord.net_total_down ?? 0) : "—"}</span>
-              <span className="inline-flex items-center gap-1"><ArrowUp size={11} />{isRealtime && node ? formatBytes(node.trafficUp) : latestHistoryRecord ? formatBytes(latestHistoryRecord.net_total_up ?? 0) : "—"}</span>
+              <span className="inline-flex items-center gap-1"><ArrowDown size={11} />{isRealtime && node ? formatTraffic(node.trafficDown) : latestHistoryRecord ? formatTraffic(latestHistoryRecord.net_total_down ?? 0) : "—"}</span>
+              <span className="inline-flex items-center gap-1"><ArrowUp size={11} />{isRealtime && node ? formatTraffic(node.trafficUp) : latestHistoryRecord ? formatTraffic(latestHistoryRecord.net_total_up ?? 0) : "—"}</span>
             </span>
           }
           points={points}

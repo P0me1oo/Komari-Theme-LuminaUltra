@@ -20,10 +20,10 @@ import { useNodeCardModel } from "@/hooks/useNodeCardModel";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useMetricColorsVersion } from "@/hooks/useMetricColors";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
-import { formatBytes } from "@/utils/format";
+import { useDisplayUnits } from "@/hooks/useDisplayUnits";
 import { HOMEPAGE_MULTI_PING_TASK_COUNT } from "@/utils/pingTasks";
 import {
-  speedRateColor,
+  speedRateColorFromBytes,
   trafficQuotaSegmentColor,
 } from "@/utils/metricTone";
 import { Flag } from "@/components/ui/Flag";
@@ -256,6 +256,7 @@ function NodeMetricSection({
   loadFraction: number;
   redrawKey: string;
 }) {
+  const { formatMemory, formatDisk } = useDisplayUnits();
   return (
     <div className="card-metric-section server-metric-grid">
       <MetricBar
@@ -273,7 +274,7 @@ function NodeMetricSection({
         label="内存"
         valueText={node.ramPct.toFixed(2)}
         unit="%"
-        detailText={`${formatBytes(node.ramUsed)} / ${formatBytes(node.ramTotal)}`}
+        detailText={`${formatMemory(node.ramUsed)} / ${formatMemory(node.ramTotal)}`}
         fraction={node.ramPct / 100}
         redrawKey={redrawKey}
         paint="var(--progress-memory)"
@@ -283,7 +284,7 @@ function NodeMetricSection({
         label="磁盘"
         valueText={node.diskPct.toFixed(1)}
         unit="%"
-        detailText={`${formatBytes(node.diskUsed)} / ${formatBytes(node.diskTotal)}`}
+        detailText={`${formatDisk(node.diskUsed)} / ${formatDisk(node.diskTotal)}`}
         fraction={node.diskPct / 100}
         redrawKey={redrawKey}
         paint="var(--progress-disk)"
@@ -315,13 +316,15 @@ function NodeTrafficSection({
   isOnline: boolean;
   redrawKey: string;
 }) {
+  const { formatTraffic } = useDisplayUnits();
   return (
     <div className="card-metric-section server-traffic-section">
       <TrafficStat
         direction="上行"
         totalLabel="出站"
         rate={upRate}
-        total={formatBytes(node.trafficUp)}
+        bytesPerSec={node.netUp}
+        total={formatTraffic(node.trafficUp)}
         samples={trafficTrend.up}
         live={isOnline}
         active={node.netUp > 0}
@@ -333,7 +336,8 @@ function NodeTrafficSection({
         direction="下行"
         totalLabel="入站"
         rate={downRate}
-        total={formatBytes(node.trafficDown)}
+        bytesPerSec={node.netDown}
+        total={formatTraffic(node.trafficDown)}
         samples={trafficTrend.down}
         live={isOnline}
         active={node.netDown > 0}
@@ -709,6 +713,7 @@ function TrafficStat({
   direction,
   totalLabel,
   rate,
+  bytesPerSec,
   total,
   samples,
   live,
@@ -720,6 +725,7 @@ function TrafficStat({
   direction: "下行" | "上行";
   totalLabel: "入站" | "出站";
   rate: ByteRateDisplay;
+  bytesPerSec: number;
   total: string;
   samples: TrafficTrendSample[];
   live: boolean;
@@ -728,8 +734,8 @@ function TrafficStat({
   color: string;
   icon: ReactNode;
 }) {
-  // 按当前速率单位档取热力色:文字/圆点/实时点都随速度量级变色,图标仍用方向色(color)区分上下行。
-  const speedColor = speedRateColor(rate.unit);
+  // 颜色取决于实际速度，切换显示单位不会改变热力档位。
+  const speedColor = speedRateColorFromBytes(bytesPerSec);
   return (
     <div className="traffic-stat">
       <div className="traffic-stat-head">

@@ -14,15 +14,11 @@ import { useHomepagePingOverview } from "@/hooks/usePingOverview";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { useViewMode } from "@/hooks/useViewMode";
-import {
-  formatBytes,
-  formatByteRate,
-  formatByteRateLabel,
-} from "@/utils/format";
-import { calculateCostSummary, formatCnyMoney, getExchangeRates } from "@/utils/cost";
+import { useDisplayUnits } from "@/hooks/useDisplayUnits";
+import { calculateCostSummary, convertAssetAmount, formatAssetMoney, getExchangeRates } from "@/utils/cost";
 import { canAccessAssets } from "@/utils/assetsAccess";
 import { useHiddenNodeUuids } from "@/hooks/useVisibleNodes";
-import { speedRateColor } from "@/utils/metricTone";
+import { speedRateColorFromBytes } from "@/utils/metricTone";
 import {
   getHomeGroupLabel,
   getHomeGroupOptions,
@@ -88,9 +84,9 @@ interface HomeOverview {
   diskTotal: number;
 }
 
-function formatCompactBytes(value: number): string {
-  const [amount, unit = "B"] = formatBytes(value).split(" ");
-  return `${amount}${unit[0]}`;
+function formatCompactLabel(label: string, abbreviate: boolean): string {
+  const [value, unit = "B"] = label.split(" ");
+  return `${value}${abbreviate ? unit[0] : unit}`;
 }
 
 function TrafficBarsIcon({ size = 19 }: { size?: number }) {
@@ -124,6 +120,7 @@ function HomeOverviewCards({
   overview,
   costSummary,
   costLoading,
+  rates,
   showOverviewRatings,
   showTrafficRating,
   showBandwidthRating,
@@ -146,6 +143,7 @@ function HomeOverviewCards({
   overview: HomeOverview;
   costSummary: { remainingCny: number } | null;
   costLoading: boolean;
+  rates: Record<string, number> | undefined;
   dense: boolean;
   showOverviewRatings: boolean;
   showTrafficRating: boolean;
@@ -165,10 +163,12 @@ function HomeOverviewCards({
   renewalNodes: RenewalReminderSource[];
   onWarmTraffic: () => void;
 }) {
-  const [trafficValue, trafficUnit] = formatBytes(
+  const { formatMemory, formatDisk, formatTraffic, formatSpeed, formatSpeedLabel } = useDisplayUnits();
+  const { assetCurrency, trafficUnit: preferredTrafficUnit, networkUnit } = useThemeSettings();
+  const [trafficValue, trafficUnit] = formatTraffic(
     overview.trafficUp + overview.trafficDown,
   ).split(" ");
-  const rate = formatByteRate(overview.netUp + overview.netDown);
+  const rate = formatSpeed(overview.netUp + overview.netDown);
   const onlinePct =
     overview.totalNodes > 0 ? (overview.onlineNodes / overview.totalNodes) * 100 : 0;
   const offlinePct =
@@ -176,18 +176,18 @@ function HomeOverviewCards({
   const remainingValue = !showCosts
     ? "-"
     : costSummary
-      ? formatCnyMoney(costSummary.remainingCny)
+      ? formatAssetMoney(convertAssetAmount(costSummary.remainingCny, assetCurrency, rates), assetCurrency)
       : costLoading
         ? "计算中"
         : "—";
-  const trafficDetailLabel = `↑ ${formatBytes(overview.trafficUp)} · ↓ ${formatBytes(overview.trafficDown)}`;
-  const trafficCompactLabel = `↑${formatCompactBytes(overview.trafficUp)} ↓${formatCompactBytes(overview.trafficDown)}`;
-  const bandwidthDetailLabel = `↑ ${formatByteRateLabel(overview.netUp)} · ↓ ${formatByteRateLabel(overview.netDown)}`;
-  const bandwidthCompactLabel = `↑${formatCompactBytes(overview.netUp)} ↓${formatCompactBytes(overview.netDown)}`;
-  const memoryUsedLabel = formatBytes(overview.ramUsed);
-  const memoryTotalLabel = formatBytes(overview.ramTotal);
-  const diskUsedLabel = formatBytes(overview.diskUsed);
-  const diskTotalLabel = formatBytes(overview.diskTotal);
+  const trafficDetailLabel = `↑ ${formatTraffic(overview.trafficUp)} · ↓ ${formatTraffic(overview.trafficDown)}`;
+  const trafficCompactLabel = `↑${formatCompactLabel(formatTraffic(overview.trafficUp), preferredTrafficUnit === "auto")} ↓${formatCompactLabel(formatTraffic(overview.trafficDown), preferredTrafficUnit === "auto")}`;
+  const bandwidthDetailLabel = `↑ ${formatSpeedLabel(overview.netUp)} · ↓ ${formatSpeedLabel(overview.netDown)}`;
+  const bandwidthCompactLabel = `↑${formatCompactLabel(formatSpeedLabel(overview.netUp), networkUnit === "auto")} ↓${formatCompactLabel(formatSpeedLabel(overview.netDown), networkUnit === "auto")}`;
+  const memoryUsedLabel = formatMemory(overview.ramUsed);
+  const memoryTotalLabel = formatMemory(overview.ramTotal);
+  const diskUsedLabel = formatDisk(overview.diskUsed);
+  const diskTotalLabel = formatDisk(overview.diskTotal);
   const trafficRating =
     showOverviewRatings && showTrafficRating
       ? getOverviewRating({
@@ -257,7 +257,7 @@ function HomeOverviewCards({
         <div className="overview-card-main">
           <p
             className="overview-card-value"
-            style={{ color: speedRateColor(rate.unit) }}
+            style={{ color: speedRateColorFromBytes(overview.netUp + overview.netDown) }}
           >
             {rate.value}
             <span className="overview-card-unit">{rate.unit}</span>
@@ -791,6 +791,7 @@ export function NodeGrid() {
           renewalNodes={renewalNodes}
           costSummary={costSummary}
           costLoading={costLoading}
+          rates={rateQuery.data?.rates}
           showOverviewRatings={themeSettings.showOverviewRatings}
           showTrafficRating={themeSettings.showTrafficRating}
           showBandwidthRating={themeSettings.showBandwidthRating}

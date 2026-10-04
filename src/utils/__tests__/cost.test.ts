@@ -4,6 +4,9 @@ import {
   calculateCostPremiumBasisAt,
   calculateCostSummary,
   formatCnyMoney,
+  convertAssetAmount,
+  formatAssetMoney,
+  formatSignedAssetMoney,
   getExchangeRates,
   isCostRateApiUrlValid,
   normalizeCostIgnoredNodes,
@@ -15,6 +18,43 @@ import type { NodeInfo } from "@/types/komari";
 
 const RATES = { USD: 1, CNY: 7 };
 const RATES_X = { USD: 1, EUR: 0.9, CNY: 7 };
+
+describe("资产显示币种", () => {
+  it("人民币转美元会换算金额，兼容汇率接口不同的基准", () => {
+    expect(convertAssetAmount(700, "USD", RATES)).toBe(100);
+    expect(convertAssetAmount(700, "USD", { USD: 0.9, CNY: 6.3 })).toBeCloseTo(100);
+    expect(convertAssetAmount(700, "CNY", undefined)).toBe(700);
+    expect(formatAssetMoney(100, "USD")).toBe("$ 100.00");
+    expect(formatAssetMoney(700, "CNY")).toBe("¥ 700.00");
+  });
+
+  it("换算后保留溢价正负号，缺少有效汇率时不伪造金额", () => {
+    expect(formatSignedAssetMoney(convertAssetAmount(-70, "USD", RATES), "USD")).toBe("-$ 10.00");
+    expect(formatSignedAssetMoney(0, "USD")).toBe("+$ 0.00");
+    const invalidRates: Array<Record<string, number> | undefined> = [
+      undefined, {}, { CNY: 7 }, { USD: 1, CNY: 0 }, { USD: 1, CNY: Infinity }, { USD: -1, CNY: 7 },
+    ];
+    for (const rates of invalidRates) {
+      expect(convertAssetAmount(700, "USD", rates)).toBeNull();
+    }
+    expect(formatAssetMoney(null, "USD")).toBe("—");
+    expect(formatSignedAssetMoney(null, "USD")).toBe("—");
+  });
+
+  it("多币种节点与收购溢价使用同一汇率，展示换算不改写统计数据", () => {
+    const summary = calculateCostSummary([
+      node({ uuid: "美元节点", price: 10 }),
+      node({ uuid: "人民币节点", price: 70, currency: "CNY" }),
+      node({ uuid: "欧元节点", price: 9, currency: "EUR" }),
+    ], [], RATES_X, { 美元节点: { amount: 7 } });
+    expect(convertAssetAmount(summary.monthlyCny, "USD", RATES_X)).toBeCloseTo(30);
+    expect(convertAssetAmount(summary.totalCny, "USD", RATES_X)).toBeCloseTo(360);
+    expect(convertAssetAmount(summary.remainingCny, "USD", RATES_X)).toBeCloseTo(30);
+    expect(convertAssetAmount(summary.actualRemainingCny, "USD", RATES_X)).toBeCloseTo(31);
+    expect(summary.monthlyCny).toBeCloseTo(210);
+    expect(summary.premiumTotalCny).toBe(7);
+  });
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();

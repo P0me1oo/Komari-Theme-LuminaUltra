@@ -6,6 +6,9 @@ import {
   formatClockTime,
   formatExpireDays,
   formatTrafficRateLabel,
+  formatNetworkRate,
+  formatNetworkRateLabel,
+  formatNetworkChartRateLabel,
   formatUptimeDays,
   getExpireDaysRemaining,
   parseTags,
@@ -16,6 +19,47 @@ import {
 const KB = 1024;
 const MB = 1024 * 1024;
 const GB = 1024 * 1024 * 1024;
+
+describe("自定义显示单位", () => {
+  it("容量固定为选定单位，不随大小自动升降", () => {
+    expect(formatBytes(GB, "MB")).toBe("1024 MB");
+    expect(formatBytes(MB, "GB")).toBe("0.00098 GB");
+    expect(formatBytes(2.5 * GB, "GB")).toBe("2.5 GB");
+    expect(formatBytes(1024 * GB, "TB")).toBe("1 TB");
+    expect(formatBytes(512 * MB, "TB")).toBe("0.00049 TB");
+    expect(formatBytes(1, "TB")).not.toBe("0 TB");
+  });
+
+  it.each([null, undefined, 0, -1, Number.NaN, Infinity])("固定单位的空值与异常值显示为零：%s", (value) => {
+    expect(formatBytes(value, "TB")).toBe("0 TB");
+    expect(formatNetworkRate(value, "Mbps")).toEqual({ value: "0", unit: "Mbps" });
+    expect(formatNetworkRate(value, "MB/S")).toEqual({ value: "0", unit: "MB/S" });
+  });
+
+  it("比特速率按 8 倍换算，达到 1000 Mbps 才转为 Gbps", () => {
+    expect(formatNetworkRateLabel(1_000_000, "Mbps")).toBe("8 Mbps");
+    expect(formatNetworkRateLabel(999.5 * 125_000, "Mbps")).toBe("999.5 Mbps");
+    expect(formatNetworkRateLabel(125_000_000, "Mbps")).toBe("1 Gbps");
+    expect(formatNetworkRateLabel(250_000_000, "Mbps")).toBe("2 Gbps");
+    expect(formatNetworkRateLabel(125, "Mbps")).toBe("0.001 Mbps");
+  });
+
+  it("字节速率达到 1024 MB/S 才转为 GB/S", () => {
+    expect(formatNetworkRateLabel(101 * MB, "MB/S")).toBe("101 MB/S");
+    expect(formatNetworkRateLabel(1023.5 * MB, "MB/S")).toBe("1023.5 MB/S");
+    expect(formatNetworkRateLabel(GB, "MB/S")).toBe("1 GB/S");
+    expect(formatNetworkRateLabel(2.5 * GB, "MB/S")).toBe("2.5 GB/S");
+    expect(formatNetworkRateLabel(1024, "MB/S")).toBe("0.00098 MB/S");
+  });
+
+  it("自动档保持原有显示，指定网络单位时图表与卡片一致", () => {
+    expect(formatNetworkRateLabel(MB)).toBe(formatByteRateLabel(MB));
+    expect(formatNetworkChartRateLabel(MB)).toBe(formatTrafficRateLabel(MB));
+    for (const unit of ["Mbps", "MB/S"] as const) {
+      expect(formatNetworkChartRateLabel(GB, unit)).toBe(formatNetworkRateLabel(GB, unit));
+    }
+  });
+});
 
 describe("formatBytes", () => {
   it("returns '0 B' for empty / non-positive / non-finite input", () => {

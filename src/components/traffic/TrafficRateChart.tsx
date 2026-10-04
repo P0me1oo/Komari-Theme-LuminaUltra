@@ -12,17 +12,14 @@ import {
   type ChartTooltipState,
 } from "@/components/instance/chartShared";
 import { usePreferences } from "@/hooks/usePreferences";
-import { formatByteRateLabel } from "@/utils/format";
+import { useDisplayUnits } from "@/hooks/useDisplayUnits";
 import type { TodayTrafficSample } from "@/utils/trafficStats";
 
 const UP_COLOR = CHART_PALETTE.cpu;
 const DOWN_COLOR = CHART_PALETTE.success;
 
-function axisRate(value: number) {
-  return Number.isFinite(value) && value > 0 ? formatByteRateLabel(value) : "";
-}
-
 export function TrafficRateChart({ samples }: { samples: TodayTrafficSample[] }) {
+  const { formatSpeedLabel } = useDisplayUnits();
   const { resolvedAppearance } = usePreferences();
   const { w, ref: chartSizeRef } = useResponsiveChartSize("grid");
   const height = w < 560 ? 182 : 220;
@@ -53,17 +50,17 @@ export function TrafficRateChart({ samples }: { samples: TodayTrafficSample[] })
         buildRows: (index) => [
           {
             label: "上行",
-            value: formatByteRateLabel(Number(dataRef.current[1]?.[index] ?? 0)),
+            value: formatSpeedLabel(Number(dataRef.current[1]?.[index] ?? 0)),
             color: UP_COLOR,
           },
           {
             label: "下行",
-            value: formatByteRateLabel(Number(dataRef.current[2]?.[index] ?? 0)),
+            value: formatSpeedLabel(Number(dataRef.current[2]?.[index] ?? 0)),
             color: DOWN_COLOR,
           },
         ],
       }),
-    [],
+    [formatSpeedLabel],
   );
   // base options 只随断点/主题变化;宽度变化时嵌套引用保持稳定,uplot-react 才会走
   // setSize 而不是整图销毁重建(与 LoadChart/PingChart 同一模式)。
@@ -94,7 +91,9 @@ export function TrafficRateChart({ samples }: { samples: TodayTrafficSample[] })
           grid: { stroke: grid, width: 1 },
           ticks: { stroke: grid },
           size: compact ? 70 : 82,
-          values: (_self, splits) => splits.map(axisRate),
+          values: (_self, splits) => splits.map((value) =>
+            Number.isFinite(value) && value > 0 ? formatSpeedLabel(value) : "",
+          ),
         },
       ],
       series: [
@@ -125,7 +124,7 @@ export function TrafficRateChart({ samples }: { samples: TodayTrafficSample[] })
         setCursor: [tooltipHooks.onSetCursor],
       },
     };
-  }, [compact, resolvedAppearance, tooltipHooks]);
+  }, [compact, resolvedAppearance, tooltipHooks, formatSpeedLabel]);
   const options = useMemo<uPlot.Options>(
     () => ({ ...baseOptions, width: w, height }) as uPlot.Options,
     [baseOptions, height, w],

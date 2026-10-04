@@ -1,5 +1,13 @@
 import type { ThemeSettings } from "@/types/komari";
 import {
+  normalizeCapacityUnit,
+  normalizeNetworkRateUnit,
+  normalizeAssetCurrency,
+  type CapacityUnit,
+  type NetworkRateUnit,
+  type AssetCurrency,
+} from "@/utils/units";
+import {
   DEFAULT_BACKGROUND_ALIGNMENT,
   DEFAULT_BACKGROUND_VIDEO_URL,
   DEFAULT_SURFACE_OPACITY,
@@ -65,6 +73,11 @@ export const AMBIENT_EFFECTS: readonly AmbientEffect[] = [
 ];
 
 export interface ResolvedThemeSettings {
+  networkUnit: NetworkRateUnit;
+  memoryUnit: CapacityUnit;
+  trafficUnit: CapacityUnit;
+  diskUnit: CapacityUnit;
+  assetCurrency: AssetCurrency;
   defaultAppearance: Appearance;
   desktopNodeViewMode: NodeViewMode;
   mobileNodeViewMode: NodeViewMode;
@@ -126,6 +139,11 @@ export interface ResolvedThemeSettings {
 }
 
 export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
+  networkUnit: "auto",
+  memoryUnit: "auto",
+  trafficUnit: "auto",
+  diskUnit: "auto",
+  assetCurrency: "CNY",
   defaultAppearance: "system",
   desktopNodeViewMode: "large",
   mobileNodeViewMode: "compact",
@@ -329,6 +347,11 @@ export function normalizeThemeSettings(
   );
   return {
     defaultAppearance: normalizeAppearance(settings?.defaultAppearance),
+    networkUnit: normalizeNetworkRateUnit(settings?.networkUnit),
+    memoryUnit: normalizeCapacityUnit(settings?.memoryUnit),
+    trafficUnit: normalizeCapacityUnit(settings?.trafficUnit),
+    diskUnit: normalizeCapacityUnit(settings?.diskUnit),
+    assetCurrency: normalizeAssetCurrency(settings?.assetCurrency),
     desktopNodeViewMode: normalizeNodeViewMode(
       settings?.desktopNodeViewMode,
       DEFAULT_THEME_SETTINGS.desktopNodeViewMode,

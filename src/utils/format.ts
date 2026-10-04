@@ -1,4 +1,7 @@
+import type { CapacityUnit, NetworkRateUnit } from "@/utils/units";
+
 const UNITS = ["B", "KB", "MB", "GB", "TB", "PB"] as const;
+const CAPACITY_DIVISORS = { MB: 1024 ** 2, GB: 1024 ** 3, TB: 1024 ** 4 };
 const CLOCK_TIME_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
   hour: "2-digit",
   minute: "2-digit",
@@ -35,7 +38,22 @@ export function joinDisplayParts(parts: Array<string | null | undefined>) {
     .join(" · ");
 }
 
-export function formatBytes(n: number | undefined | null): string {
+/** 固定单位保留小数；小于 0.01 时增加精度，避免有用量却显示为零。 */
+function formatUnitValue(value: number): string {
+  const digits = value > 0 && value < 0.01
+    ? Math.min(14, Math.ceil(-Math.log10(value)) + 1)
+    : 2;
+  return trimFixed(value, digits);
+}
+
+export function formatBytes(
+  n: number | undefined | null,
+  unit: CapacityUnit = "auto",
+): string {
+  if (unit !== "auto") {
+    const value = n != null && Number.isFinite(n) && n > 0 ? n / CAPACITY_DIVISORS[unit] : 0;
+    return `${formatUnitValue(value)} ${unit}`;
+  }
   if (!n || n < 0 || !Number.isFinite(n)) return "0 B";
   let idx = 0;
   let v = n;
@@ -106,6 +124,47 @@ export function formatByteRate(bytesPerSec: number | undefined | null): ByteRate
 export function formatByteRateLabel(bytesPerSec: number | undefined | null): string {
   const { value, unit } = formatByteRate(bytesPerSec);
   return `${value} ${unit}`;
+}
+
+/** 网络固定从 Mbps 或 MB/S 起显示，只在各自门槛处切换为 Gbps 或 GB/S。 */
+export function formatNetworkRate(
+  bytesPerSec: number | undefined | null,
+  unit: NetworkRateUnit = "auto",
+): ByteRateDisplay {
+  if (unit === "auto") return formatByteRate(bytesPerSec);
+  const bytes = bytesPerSec != null && Number.isFinite(bytesPerSec) && bytesPerSec > 0
+    ? bytesPerSec
+    : 0;
+  if (unit === "Mbps") {
+    const gigabit = bytes >= 125_000_000;
+    return {
+      value: formatUnitValue(bytes / (gigabit ? 125_000_000 : 125_000)),
+      unit: gigabit ? "Gbps" : "Mbps",
+    };
+  }
+  const gigabyte = bytes >= CAPACITY_DIVISORS.GB;
+  return {
+    value: formatUnitValue(bytes / (gigabyte ? CAPACITY_DIVISORS.GB : CAPACITY_DIVISORS.MB)),
+    unit: gigabyte ? "GB/S" : "MB/S",
+  };
+}
+
+export function formatNetworkRateLabel(
+  bytesPerSec: number | undefined | null,
+  unit: NetworkRateUnit = "auto",
+): string {
+  const rate = formatNetworkRate(bytesPerSec, unit);
+  return `${rate.value} ${rate.unit}`;
+}
+
+/** 自动档沿用负载图原有的比特显示，其余档与全站网络单位一致。 */
+export function formatNetworkChartRateLabel(
+  bytesPerSec: number | undefined | null,
+  unit: NetworkRateUnit = "auto",
+): string {
+  return unit === "auto"
+    ? formatTrafficRateLabel(bytesPerSec)
+    : formatNetworkRateLabel(bytesPerSec, unit);
 }
 
 export function formatUptimeDays(seconds: number): { value: string; unit: string } {

@@ -20,7 +20,7 @@ import { NodeTodayTrafficPopover } from "./NodeTodayTrafficPopover";
 import { HealthBucketTooltip } from "./HealthBucketTooltip";
 import { useNodeCardModel } from "@/hooks/useNodeCardModel";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
-import { speedRateColor } from "@/utils/metricTone";
+import { speedRateColorFromBytes } from "@/utils/metricTone";
 import { supportsFineHover } from "@/utils/mediaQuery";
 import {
   healthBarSlotModel,
@@ -29,7 +29,8 @@ import {
   pingEmptyLabels,
 } from "./nodeCardShared";
 import { formatHealthBucketTooltip } from "./pingBucketText";
-import { formatBytes, type ByteRateDisplay } from "@/utils/format";
+import type { ByteRateDisplay } from "@/utils/format";
+import { useDisplayUnits } from "@/hooks/useDisplayUnits";
 import type { NodeInfo, NodeMetrics, PingOverviewItem, PingOverviewBucket } from "@/types/komari";
 
 // 迷你卡固定为巡检布局，不跟随紧凑卡的可选指标开关；数据仍走共享模型。
@@ -234,6 +235,7 @@ function MiniFlow({
   upRate: ByteRateDisplay;
   downRate: ByteRateDisplay;
 }) {
+  const { formatTraffic } = useDisplayUnits();
   return (
     <div className="mini-node-flow">
       <div className="mini-node-flow-group" aria-label="实时网速">
@@ -241,26 +243,26 @@ function MiniFlow({
           icon={<ArrowUp size={12} strokeWidth={2.4} />}
           value={upRate.value}
           unit={upRate.unit}
-          color={speedRateColor(upRate.unit)}
+          color={speedRateColorFromBytes(node.netUp)}
           title="实时上行"
         />
         <MiniFlowRow
           icon={<ArrowDown size={12} strokeWidth={2.4} />}
           value={downRate.value}
           unit={downRate.unit}
-          color={speedRateColor(downRate.unit)}
+          color={speedRateColorFromBytes(node.netDown)}
           title="实时下行"
         />
       </div>
       <div className="mini-node-flow-group" aria-label="累计流量">
         <MiniFlowRow
           icon={<ArrowUp size={12} strokeWidth={2.2} />}
-          value={formatBytes(node.trafficUp)}
+          value={formatTraffic(node.trafficUp)}
           title="累计上行"
         />
         <MiniFlowRow
           icon={<ArrowDown size={12} strokeWidth={2.2} />}
-          value={formatBytes(node.trafficDown)}
+          value={formatTraffic(node.trafficDown)}
           title="累计下行"
         />
       </div>

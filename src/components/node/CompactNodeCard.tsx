@@ -20,9 +20,9 @@ import { Flag } from "@/components/ui/Flag";
 import { OsLogo } from "@/components/ui/OsLogo";
 import { useNodeCardModel } from "@/hooks/useNodeCardModel";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
-import { formatBytes } from "@/utils/format";
+import { useDisplayUnits } from "@/hooks/useDisplayUnits";
 import { HOMEPAGE_MULTI_PING_TASK_COUNT } from "@/utils/pingTasks";
-import { speedRateColor, speedRateColorFromBytes } from "@/utils/metricTone";
+import { speedRateColorFromBytes } from "@/utils/metricTone";
 import { supportsFineHover } from "@/utils/mediaQuery";
 import { formatHealthBucketTooltip } from "./pingBucketText";
 import { MultiPingStatus } from "./MultiPingStatus";
@@ -409,6 +409,7 @@ function CompactNodeVitals({
   node: CompactNode;
   loadFraction: number;
 }) {
+  const { formatMemory, formatDisk } = useDisplayUnits();
   return (
     <div className="compact-node-vitals">
       <CompactGauge
@@ -423,7 +424,7 @@ function CompactNodeVitals({
         icon={<MemoryStick size={12} />}
         label="内存"
         value={formatCompactPercent(node.ramPct)}
-        detail={`${formatBytes(node.ramUsed)} / ${formatBytes(node.ramTotal)}`}
+        detail={`${formatMemory(node.ramUsed)} / ${formatMemory(node.ramTotal)}`}
         fraction={node.ramPct / 100}
         color="var(--progress-memory)"
       />
@@ -431,7 +432,7 @@ function CompactNodeVitals({
         icon={<HardDrive size={12} />}
         label="磁盘"
         value={formatCompactPercent(node.diskPct)}
-        detail={`${formatBytes(node.diskUsed)} / ${formatBytes(node.diskTotal)}`}
+        detail={`${formatDisk(node.diskUsed)} / ${formatDisk(node.diskTotal)}`}
         fraction={node.diskPct / 100}
         color="var(--progress-disk)"
       />
@@ -472,6 +473,7 @@ function CompactNodeInfoStrip({
   expireColor: string;
   renewalPrice: string | null;
 }) {
+  const { formatTraffic } = useDisplayUnits();
   const infoTileCount =
     1 +
     (showTrafficTotal ? 1 : 0) +
@@ -492,13 +494,13 @@ function CompactNodeInfoStrip({
           icon={<ArrowUp size={12} strokeWidth={2.3} />}
           value={upRate.value}
           unit={upRate.unit}
-          color={speedRateColor(upRate.unit)}
+          color={speedRateColorFromBytes(node.netUp)}
         />
         <CompactInfoRow
           icon={<ArrowDown size={12} strokeWidth={2.3} />}
           value={downRate.value}
           unit={downRate.unit}
-          color={speedRateColor(downRate.unit)}
+          color={speedRateColorFromBytes(node.netDown)}
         />
         <CompactTrafficPulse up={trafficTrend.up} down={trafficTrend.down} />
       </CompactInfoTile>
@@ -515,7 +517,7 @@ function CompactNodeInfoStrip({
                 aria-label="上行"
               />
             )}
-            value={formatBytes(node.trafficUp)}
+            value={formatTraffic(node.trafficUp)}
           />
           <CompactInfoRow
             icon={(
@@ -525,7 +527,7 @@ function CompactNodeInfoStrip({
                 aria-label="下行"
               />
             )}
-            value={formatBytes(node.trafficDown)}
+            value={formatTraffic(node.trafficDown)}
           />
         </CompactInfoTile>
       )}

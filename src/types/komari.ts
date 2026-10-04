@@ -110,6 +110,11 @@ export interface NodeMetrics {
 }
 
 export interface ThemeSettings {
+  networkUnit?: "auto" | "Mbps" | "MB/S";
+  memoryUnit?: "auto" | "TB" | "GB" | "MB";
+  trafficUnit?: "auto" | "TB" | "GB" | "MB";
+  diskUnit?: "auto" | "TB" | "GB" | "MB";
+  assetCurrency?: "CNY" | "USD";
   defaultAppearance?: "system" | "light" | "dark";
   desktopNodeViewMode?: "large" | "compact" | "mini" | "list";
   mobileNodeViewMode?: "large" | "compact" | "mini" | "list";

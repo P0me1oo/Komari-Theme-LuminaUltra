@@ -18,6 +18,13 @@ const stat: TodayTrafficStat = {
 };
 
 describe("InstanceDetails today traffic status", () => {
+  it("今日流量与峰值使用所选单位，更新失败仍保留相同单位", () => {
+    const sample = { ...stat, trafficUp: 1024 ** 3, trafficDown: 2 * 1024 ** 3, peakUp: 125_000_000, peakDown: 250_000_000 };
+    expect(formatTodayTrafficValue(sample, false, false, "GB")).toBe("↑ 1 GB · ↓ 2 GB");
+    expect(formatTodayTrafficValue(sample, false, true, "MB")).toBe("↑ 1024 MB · ↓ 2048 MB（更新失败）");
+    expect(formatTodayPeakValue(sample, false, "Mbps")).toBe("↑ 1 Gbps · ↓ 2 Gbps");
+  });
+
   it("reports a total query failure instead of normal no-sample state", () => {
     expect(formatTodayTrafficValue(undefined, false, true)).toBe("今日流量加载失败");
   });

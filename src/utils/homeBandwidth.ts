@@ -41,17 +41,42 @@ export function aggregateHomeBandwidth(
   return result;
 }
 
-/** 缺失样本断开路径，零带宽保留为真实的零值。 */
-export function bandwidthPath(points: BandwidthPoint[], direction: "up" | "down", max: number): string {
-  let connected = false;
-  return points.map((point, index) => {
-    const value = point[direction];
-    if (value == null) { connected = false; return ""; }
-    const command = connected ? "L" : "M";
-    connected = true;
-    const x = 2 + index / Math.max(1, points.length - 1) * 256;
-    const y = 40 - value / Math.max(1, max) * 36;
-    // 极短线段让孤立样本也可见。
-    return `${command}${x.toFixed(2)},${y.toFixed(2)}${command === "M" ? "l0.01,0" : ""}`;
+/** 两条趋势线共用动态纵轴，让较小波动也能看清；恒定速率显示水平线。 */
+export function bandwidthRange(points: BandwidthPoint[]): [number, number] {
+  const values = points.flatMap((point) => [point.up, point.down])
+    .filter((value): value is number => value != null && Number.isFinite(value));
+  if (values.length === 0) return [0, 1];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const padding = Math.max((max - min) * 0.1, max * 0.01, 1);
+  return [Math.max(0, min - padding), max + padding];
+}
+
+/** 单调插值经过真实采样点，不制造峰值；缺失样本仍然断线。 */
+export function bandwidthPath(points: BandwidthPoint[], direction: "up" | "down", max: number, min = 0): string {
+  const segments: Array<Array<{ x: number; y: number }>> = [];
+  let segment: Array<{ x: number; y: number }> = [];
+  for (let index = 0; index < points.length; index++) {
+    const value = points[index][direction];
+    if (value == null) { segment = []; continue; }
+    if (segment.length === 0) segments.push(segment);
+    segment.push({ x: 2 + index / Math.max(1, points.length - 1) * 256, y: 39 - (value - min) / Math.max(1, max - min) * 34 });
+  }
+  const xy = (x: number, y: number) => `${x.toFixed(2)},${y.toFixed(2)}`;
+  return segments.map((items) => {
+    let path = `M${xy(items[0].x, items[0].y)}`;
+    if (items.length === 1) return `${path}l0.01,0`;
+    const slopes = items.slice(1).map((point, index) => (point.y - items[index].y) / (point.x - items[index].x));
+    const tangents = items.map((_, index) => {
+      if (index === 0) return slopes[0];
+      if (index === items.length - 1) return slopes[index - 1];
+      const before = slopes[index - 1], after = slopes[index];
+      return before * after <= 0 ? 0 : 2 / (1 / before + 1 / after);
+    });
+    for (let index = 1; index < items.length; index++) {
+      const a = items[index - 1], b = items[index], step = (b.x - a.x) / 3;
+      path += ` C${xy(a.x + step, a.y + tangents[index - 1] * step)} ${xy(b.x - step, b.y - tangents[index] * step)} ${xy(b.x, b.y)}`;
+    }
+    return path;
   }).join(" ");
 }

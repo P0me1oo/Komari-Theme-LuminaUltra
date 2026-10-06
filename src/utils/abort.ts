@@ -22,10 +22,11 @@ function createTimeoutSignal(
     }
   };
 
-  function onUpstreamAbort(event: Event) {
-    const upstream = event.currentTarget as AbortSignal;
+  function onUpstreamAbort() {
+    // 连锁取消时，部分运行环境会清空事件的 currentTarget；直接读取已取消的来源。
+    const reason = upstreams.find((upstream) => upstream.aborted)?.reason;
     cleanup();
-    if (!controller.signal.aborted) controller.abort(upstream.reason);
+    if (!controller.signal.aborted) controller.abort(reason);
   }
 
   const abortedSource = upstreams.find((upstream) => upstream.aborted);

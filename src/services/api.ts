@@ -17,7 +17,7 @@ import {
   type PingTask,
   type PingTaskStats,
 } from "@/types/komari";
-import { fetchWithTimeout } from "@/utils/abort";
+import { fetchWithTimeout, withTimeoutSignal } from "@/utils/abort";
 import { inferHistoryIntervalSeconds } from "@/utils/historyRange";
 import {
   LOAD_LAST_AGGREGATION,
@@ -961,8 +961,41 @@ export interface TodayTrafficMetricResponse {
 
 let recentStatusApiAvailable = true;
 
+export interface HomeBandwidthHistory {
+  series: TrafficMetricSeries[];
+  start: number;
+  end: number;
+}
+
+interface HomeBandwidthOptions extends ApiCallOptions {
+  onProgress?: (history: HomeBandwidthHistory) => void;
+}
+
+/** 整轮查询共享八秒上限；先显示已有历史，不等待所有节点补取完成。 */
+export async function getHomeBandwidthHistory(uuids: string[], options?: HomeBandwidthOptions): Promise<HomeBandwidthHistory> {
+  return withTimeoutSignal(async (signal) => {
+    signal.throwIfAborted();
+    let latest: HomeBandwidthHistory | undefined;
+    try {
+      return await waitForSharedRequest(loadHomeBandwidthHistory(uuids, {
+        signal,
+        timeout: options?.timeout ?? 8000,
+        onProgress: (history) => {
+          if (signal.aborted) return;
+          latest = history;
+          if (history.series.some((item) => item.points.some((point) => point.value != null))) options?.onProgress?.(history);
+        },
+      }), signal);
+    } catch (error) {
+      // 离开页面时取消全部工作；整轮超时则保留已经收到的数据。
+      if (options?.signal?.aborted || !latest) throw error;
+      return latest;
+    }
+  }, options?.timeout ?? 8000, options?.signal);
+}
+
 /** 首页请求最近一分钟上下行速率，稀疏历史由最近实时上报补齐。 */
-export async function getHomeBandwidthHistory(uuids: string[], options?: ApiCallOptions) {
+async function loadHomeBandwidthHistory(uuids: string[], options: HomeBandwidthOptions) {
   const end = Date.now();
   const start = end - 60_000;
   if (uuids.length === 0) return { series: [] as TrafficMetricSeries[], start, end };
@@ -999,6 +1032,8 @@ export async function getHomeBandwidthHistory(uuids: string[], options?: ApiCall
       { client, metricKey: RATE_DOWN_METRIC, points: records.map((r) => ({ time: r.time, value: r.net_in ?? null, count: 1 })) },
     ]);
   }
+  const publish = () => options.onProgress?.({ series: [...series], start, end });
+  publish();
   // 某些后端的存储历史一分钟只有一个点；用内存中的最近上报补齐，避免把聚合点当成实时曲线。
   const sparse = uuids.filter((uuid) => [RATE_UP_METRIC, RATE_DOWN_METRIC].some((key) =>
     series.filter((item) => item.client === uuid && item.metricKey === key)
@@ -1010,9 +1045,13 @@ export async function getHomeBandwidthHistory(uuids: string[], options?: ApiCall
   })) });
   await Promise.all(Array.from({ length: Math.min(4, sparse.length) }, async () => {
     while (recentStatusApiAvailable && cursor < sparse.length) {
+      options.signal?.throwIfAborted();
       const uuid = sparse[cursor++];
       try {
-        const recent = await rpcCall("common:getNodeRecentStatus", { uuid }, recentSchema, options);
+        // 单个慢节点最多占用两秒，传输方式切换也不能重新计算等待时间。
+        const recent = await withTimeoutSignal((signal) => waitForSharedRequest(
+          rpcCall("common:getNodeRecentStatus", { uuid }, recentSchema, { signal, timeout: 2000 }), signal,
+        ), 2000, options.signal);
         for (const [key, field] of [[RATE_UP_METRIC, "net_out"], [RATE_DOWN_METRIC, "net_in"]] as const) {
           const points = recent.records.filter((r) => Date.parse(r.time) >= start && Date.parse(r.time) <= end)
             .map((r) => ({ time: r.time, value: r[field] ?? null, count: 1 }));
@@ -1021,6 +1060,7 @@ export async function getHomeBandwidthHistory(uuids: string[], options?: ApiCall
           series = series.filter((item) => item.client !== uuid || item.metricKey !== key);
           series.push({ client: uuid, metricKey: key, points });
         }
+        publish();
       } catch (error) {
         if (options?.signal?.aborted) throw error;
         if (error instanceof RpcResponseError && error.code === -32601) recentStatusApiAvailable = false;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateHomeBandwidth, bandwidthPath } from "@/utils/homeBandwidth";
+import { aggregateHomeBandwidth, bandwidthPath, bandwidthRange } from "@/utils/homeBandwidth";
 import { RATE_UP_METRIC, RATE_DOWN_METRIC, type TrafficMetricSeries } from "@/utils/trafficStats";
 
 const start = Date.parse("2026-10-06T00:00:00Z");
@@ -50,5 +50,17 @@ describe("首页一分钟带宽", () => {
     expect(result[9].up).toBe(10);
     expect(result[10].up).toBeNull();
     expect(result[40].up).toBe(20);
+  });
+
+  it("两条线共用动态纵轴，平滑线经过样本且不越过端点数值", () => {
+    const points = [100, 102, 101, 103].map((up, time) => ({ time, up, down: up + 1 }));
+    const [min, max] = bandwidthRange(points);
+    expect(min).toBeGreaterThan(90);
+    expect(max).toBeGreaterThan(104);
+    const path = bandwidthPath(points, "up", max, min);
+    expect(path.match(/C/g)).toHaveLength(3);
+    const coordinates = [...path.matchAll(/([\d.]+),([\d.]+)/g)].map((match) => Number(match[2]));
+    expect(coordinates.every((value) => value >= 5 && value <= 39)).toBe(true);
+    expect(bandwidthPath([{ time: 0, up: 0, down: 0 }], "up", 1)).not.toContain("NaN");
   });
 });

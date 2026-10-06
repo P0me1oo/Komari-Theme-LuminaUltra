@@ -65,10 +65,12 @@ import {
   normalizeCostRateApiUrl,
   type CostPremiumEntry,
 } from "@/utils/cost";
-import { normalizeNodeIdentityList } from "@/utils/nodeIdentity";
+import { normalizeNodeIdentityList, collectMatchingNodeUuids } from "@/utils/nodeIdentity";
 import {
   dedupeGroupLabels,
   normalizeHomeGroupOrder,
+  normalizeHomeRegionOrder,
+  getHomeRegionOptions,
   sortHomeGroupOptions,
 } from "@/utils/homeNodes";
 import {
@@ -326,6 +328,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     showRegionBar: settings.showRegionBar,
     showCardGroup: settings.showCardGroup,
     homeGroupOrder: settings.homeGroupOrder,
+    homeRegionOrder: settings.homeRegionOrder,
     enableHomeSort: settings.enableHomeSort,
     homeSortField: settings.homeSortField,
     homeSortDirection: settings.homeSortDirection,
@@ -334,6 +337,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     showCostSummaryFloatingButton: settings.showCostSummaryFloatingButton,
     showOverviewOnline: settings.showOverviewOnline,
     showOverviewBandwidth: settings.showOverviewBandwidth,
+    showOverviewConnections: settings.showOverviewConnections,
     showOverviewTraffic: settings.showOverviewTraffic,
     showOverviewAsset: settings.showOverviewAsset,
     showOverviewMemory: settings.showOverviewMemory,
@@ -1118,6 +1122,17 @@ export function ThemeManage() {
     () => normalizeNodeIdentityList(draft.hiddenNodesText),
     [draft.hiddenNodesText],
   );
+  const orderedDraftRegions = useMemo(() => {
+    const hidden = collectMatchingNodeUuids(allMeta, draftHiddenNodes);
+    return getHomeRegionOptions(sortedClients.filter((client) => !hidden.has(client.uuid)), draft.homeRegionOrder);
+  }, [allMeta, sortedClients, draftHiddenNodes, draft.homeRegionOrder]);
+  const moveRegion = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= orderedDraftRegions.length) return;
+    const next = orderedDraftRegions.map(({ code }) => code);
+    [next[index], next[target]] = [next[target], next[index]];
+    patch("homeRegionOrder", next);
+  };
   const draftCostRateApiUrlInvalid =
     draft.costRateApiUrl.trim() !== "" && !isCostRateApiUrlValid(draft.costRateApiUrl.trim());
   const costVisibilityDesc =
@@ -1155,6 +1170,7 @@ export function ThemeManage() {
         rest.homepageMultiPingNodeTaskIds,
       ),
       homeGroupOrder: normalizeHomeGroupOrder(rest.homeGroupOrder),
+      homeRegionOrder: normalizeHomeRegionOrder(rest.homeRegionOrder),
       trafficRatingLabels: ratingLabels.traffic,
       bandwidthRatingLabels: ratingLabels.bandwidth,
       assetRatingLabels: ratingLabels.asset,
@@ -2027,6 +2043,28 @@ export function ThemeManage() {
           )}
         </div>
 
+        <div className="mt-4">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[13px] font-medium text-[var(--text-primary)]">地区排序</span>
+            <button type="button" className="theme-manage-button is-compact" disabled={draft.homeRegionOrder.length === 0} onClick={() => patch("homeRegionOrder", [])}>恢复默认顺序</button>
+          </div>
+          {orderedDraftRegions.length === 0 ? (
+            <p className="surface-inset mt-2 px-4 py-3 text-[12px] text-[var(--text-tertiary)]">{clientsLoading ? "正在加载地区…" : clientsError ? "地区加载失败" : "暂无地区"}</p>
+          ) : (
+            <ol className="mt-2 flex flex-col gap-2">
+              {orderedDraftRegions.map(({ code, count }, index) => (
+                <li key={code} className="surface-inset flex items-center justify-between gap-3 px-4 py-2.5">
+                  <span className="text-[13px] text-[var(--text-primary)]">{index + 1}. {code} · {count} 台</span>
+                  <span className="flex gap-1">
+                    <button type="button" className="theme-manage-button is-compact" disabled={index === 0} onClick={() => moveRegion(index, -1)} aria-label={`上移地区 ${code}`}>上移</button>
+                    <button type="button" className="theme-manage-button is-compact" disabled={index === orderedDraftRegions.length - 1} onClick={() => moveRegion(index, 1)} aria-label={`下移地区 ${code}`}>下移</button>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+
         <div className="mt-4 surface-inset px-4 py-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <span className="min-w-0">
@@ -2114,7 +2152,7 @@ export function ThemeManage() {
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <span className="text-[13px] font-medium text-[var(--text-primary)]">首页总览</span>
             <span className="text-[11px] text-[var(--text-tertiary)]">
-              可分别控制六种总览卡片；空间不足时横向滚动查看。
+              可分别控制七种总览卡片；空间不足时横向滚动查看。
             </span>
           </div>
           <div className="overview-toggle-strip mt-2">
@@ -2130,6 +2168,13 @@ export function ThemeManage() {
               title="显示实时带宽"
               desc="汇总所有可见节点的实时上下行速率。"
               checked={draft.showOverviewBandwidth}
+              onPatch={patch}
+            />
+            <ToggleRow
+              field="showOverviewConnections"
+              title="显示总连接数"
+              desc="汇总所有可见在线节点的 TCP / UDP 连接数。"
+              checked={draft.showOverviewConnections}
               onPatch={patch}
             />
             <ToggleRow

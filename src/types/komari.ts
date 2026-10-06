@@ -147,6 +147,7 @@ export interface ThemeSettings {
   allowGuestCostSummary?: boolean;
   showOverviewOnline?: boolean;
   showOverviewBandwidth?: boolean;
+  showOverviewConnections?: boolean;
   showOverviewTraffic?: boolean;
   showOverviewAsset?: boolean;
   showOverviewMemory?: boolean;

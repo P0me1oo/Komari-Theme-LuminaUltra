@@ -35,18 +35,29 @@ function regionRank(code: string): number {
  * 按展示地区代码聚合节点数,按固定地理优先级排序(见 REGION_PRIORITY):中国(大陆优先,含港澳台)
  * → 新加坡 → 日本 → 美国 → 欧洲诸国 → 其余。同一档内(欧洲/其余)再按数量降序、代码升序。
  */
-export function getHomeRegionOptions(nodes: HomeNodeSummary[]): HomeRegionOption[] {
+export function getHomeRegionOptions(nodes: Pick<HomeNodeSummary, "region">[], order: string[] = []): HomeRegionOption[] {
   const counts = new Map<string, number>();
   for (const node of nodes) {
     const code = getDisplayRegionCode(node.region);
     counts.set(code, (counts.get(code) ?? 0) + 1);
   }
+  const priorities = new Map(normalizeHomeRegionOrder(order).map((code, index) => [code, index]));
   return Array.from(counts, ([code, count]) => ({ code, count })).sort(
     (a, b) =>
+      (priorities.get(a.code) ?? priorities.size) - (priorities.get(b.code) ?? priorities.size) ||
       regionRank(a.code) - regionRank(b.code) ||
       b.count - a.count ||
       a.code.localeCompare(b.code),
   );
+}
+
+/** 地区排序只接受两位地区代码，忽略重复值和无效输入。 */
+export function normalizeHomeRegionOrder(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.flatMap((item) => {
+    const code = typeof item === "string" ? item.trim().toUpperCase() : "";
+    return /^[A-Z]{2}$/.test(code) ? [code] : [];
+  }))];
 }
 
 export function getHomeGroupLabel(group: string) {

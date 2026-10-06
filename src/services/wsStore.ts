@@ -30,6 +30,8 @@ export interface HomeNodeSummary {
   trafficDown: number;
   netUp: number;
   netDown: number;
+  connectionsTcp: number;
+  connectionsUdp: number;
   ramUsed: number;
   ramTotal: number;
   diskUsed: number;
@@ -1098,6 +1100,8 @@ export function getHomeNodeSummariesSnapshot(): HomeNodeSummary[] {
         trafficDown: metrics?.trafficDown ?? 0,
         netUp: metrics?.netUp ?? 0,
         netDown: metrics?.netDown ?? 0,
+        connectionsTcp: metrics?.connectionsTcp ?? 0,
+        connectionsUdp: metrics?.connectionsUdp ?? 0,
         ramUsed: metrics?.ramUsed ?? 0,
         ramTotal: metrics?.ramTotal ?? meta.mem_total ?? 0,
         diskUsed: metrics?.diskUsed ?? 0,
@@ -1123,6 +1127,8 @@ export function getHomeNodeSummariesSnapshot(): HomeNodeSummary[] {
         prev.trafficDown === item.trafficDown &&
         prev.netUp === item.netUp &&
         prev.netDown === item.netDown &&
+        prev.connectionsTcp === item.connectionsTcp &&
+        prev.connectionsUdp === item.connectionsUdp &&
         prev.ramUsed === item.ramUsed &&
         prev.ramTotal === item.ramTotal &&
         prev.diskUsed === item.diskUsed &&

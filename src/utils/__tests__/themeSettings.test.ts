@@ -128,6 +128,7 @@ describe("normalizeThemeSettings", () => {
     expect(normalizeThemeSettings({})).toMatchObject({
       showOverviewOnline: true,
       showOverviewBandwidth: true,
+      showOverviewConnections: true,
       showOverviewTraffic: true,
       showOverviewAsset: true,
       showOverviewMemory: false,
@@ -138,6 +139,7 @@ describe("normalizeThemeSettings", () => {
       normalizeThemeSettings({
         showOverviewOnline: false,
         showOverviewBandwidth: false,
+        showOverviewConnections: false,
         showOverviewTraffic: false,
         showOverviewAsset: false,
         showOverviewMemory: true,
@@ -147,6 +149,7 @@ describe("normalizeThemeSettings", () => {
     ).toMatchObject({
       showOverviewOnline: false,
       showOverviewBandwidth: false,
+      showOverviewConnections: false,
       showOverviewTraffic: false,
       showOverviewAsset: false,
       showOverviewMemory: true,

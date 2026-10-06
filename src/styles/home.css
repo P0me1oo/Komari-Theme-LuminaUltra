@@ -110,6 +110,16 @@
 .overview-card[data-metric="online"] { --metric-accent: var(--status-success); }
 .overview-card[data-metric="traffic"] { --metric-accent: var(--traffic-up); }
 .overview-card[data-metric="bandwidth"] { --metric-accent: var(--speed-high); }
+
+.home-bandwidth-trend { margin-top: auto; min-width: 0; }
+.home-bandwidth-legend { display: flex; gap: 10px; align-items: center; font-size: 10px; color: var(--text-tertiary); }
+.home-bandwidth-legend > :last-child { margin-left: auto; }
+.home-bandwidth-up { color: var(--traffic-up); }
+.home-bandwidth-down { color: var(--traffic-down); }
+.home-bandwidth-trend svg { display: block; width: 100%; height: 44px; margin-top: 4px; overflow: hidden; }
+.home-bandwidth-trend path { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.home-bandwidth-empty { display: grid; place-items: center; height: 48px; font-size: 11px; color: var(--text-tertiary); }
+.overview-card[data-metric="connections"] { --metric-accent: var(--accent-500); }
 .overview-card[data-metric="asset"] { --metric-accent: var(--accent-500); }
 .overview-card[data-metric="memory"] { --metric-accent: var(--progress-memory); }
 .overview-card[data-metric="disk"] { --metric-accent: var(--progress-disk); }

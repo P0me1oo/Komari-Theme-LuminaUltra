@@ -293,7 +293,8 @@ function trafficMetricPayload(params: {
     : Date.now();
   const entityIds = params.entity_ids?.length ? params.entity_ids : nodes.map((node) => node.uuid);
   const metricKeys = params.metric_keys ?? [];
-  const intervalMs = 5 * 60 * 1000;
+  // 一分钟带宽预览使用两秒样本，全天流量预览继续使用五分钟样本。
+  const intervalMs = end - start <= 60_000 ? 2000 : 5 * 60 * 1000;
   const pointCount = Math.max(1, Math.ceil((end - start) / intervalMs));
   const series = entityIds.flatMap((uuid) => {
     const index = nodes.findIndex((node) => node.uuid === uuid);
@@ -303,7 +304,7 @@ function trafficMetricPayload(params: {
       entity_id: uuid,
       interval_seconds: intervalMs / 1000,
       points: Array.from({ length: pointCount }, (_, pointIndex) => {
-        const phase = pointIndex / 9 + index * 0.8;
+        const phase = (start + pointIndex * intervalMs) / intervalMs / 9 + index * 0.8;
         const time = new Date(start + pointIndex * intervalMs).toISOString();
         const value =
           metricKey === "traffic.up"
@@ -865,7 +866,8 @@ export function installDevMockApi() {
           if (metricKeys.some((key) => key.startsWith("ping."))) {
             return reply(pingMetricPayload(payload.params ?? {}));
           }
-          if (metricKeys.some((key) => key === "traffic.up" || key === "traffic.down")) {
+          if (metricKeys.some((key) => key === "traffic.up" || key === "traffic.down") ||
+              (metricKeys.length > 0 && metricKeys.every((key) => key === "net.out.rate" || key === "net.in.rate"))) {
             return reply(trafficMetricPayload(payload.params ?? {}));
           }
           return reply(loadMetricPayload(payload.params ?? {}));

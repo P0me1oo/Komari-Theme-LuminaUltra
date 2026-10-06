@@ -959,6 +959,47 @@ export interface TodayTrafficMetricResponse {
   intervalSeconds?: number;
 }
 
+/** 首页只请求最近一分钟的原始上下行速率，兼容旧版记录接口。 */
+export async function getHomeBandwidthHistory(uuids: string[], options?: ApiCallOptions) {
+  const end = Date.now();
+  const start = end - 60_000;
+  if (uuids.length === 0) return { series: [] as TrafficMetricSeries[], start, end };
+  let series: TrafficMetricSeries[];
+  try {
+    const payload = await queryMetricPayload({
+      start: new Date(start).toISOString(), end: new Date(end).toISOString(),
+      entity_ids: uuids, metric_keys: [RATE_UP_METRIC, RATE_DOWN_METRIC],
+      downsample: false, fill_empty: false,
+    }, options?.signal, options?.timeout);
+    series = payload.series.map((item) => ({
+      client: item.entity_id, metricKey: item.metric_key, points: item.points,
+    }));
+  } catch (error) {
+    if (options?.signal?.aborted) throw error;
+    const payload = await rpcCall("common:getRecords", {
+      type: "load", load_type: "network", maxCount: -1,
+      start: new Date(start).toISOString(), end: new Date(end).toISOString(),
+    }, RpcRecordsSchema, options);
+    const schema = z.object({
+      client: z.string(), time: z.string(),
+      net_out: z.number().nullable().optional(), net_in: z.number().nullable().optional(),
+    });
+    const visible = new Set(uuids);
+    const groups = new Map<string, z.infer<typeof schema>[]>();
+    for (const record of parseArrayLenient(schema, extractRpcRecords(payload))) {
+      if (!visible.has(record.client)) continue;
+      const records = groups.get(record.client) ?? [];
+      records.push(record);
+      groups.set(record.client, records);
+    }
+    series = [...groups].flatMap(([client, records]) => [
+      { client, metricKey: RATE_UP_METRIC, points: records.map((r) => ({ time: r.time, value: r.net_out ?? null, count: 1 })) },
+      { client, metricKey: RATE_DOWN_METRIC, points: records.map((r) => ({ time: r.time, value: r.net_in ?? null, count: 1 })) },
+    ]);
+  }
+  return { series, start, end };
+}
+
 /**
  * 查询浏览器本地“今天”的流量增量与上下行采样峰值。服务端按 5 分钟左右聚合，
  * 流量使用 sum、速率使用 max；前端随后再汇总到每台节点，避免拉取全天原始点。

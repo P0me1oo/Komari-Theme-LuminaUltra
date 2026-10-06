@@ -24,7 +24,7 @@ import {
   type CostPremiumEntry,
 } from "@/utils/cost";
 import { normalizeNodeIdentityList } from "@/utils/nodeIdentity";
-import { normalizeHomeGroupOrder } from "@/utils/homeNodes";
+import { normalizeHomeGroupOrder, normalizeHomeRegionOrder } from "@/utils/homeNodes";
 import {
   HOME_SORT_NATURAL_DIRECTION,
   isHomeSortDirection,
@@ -97,6 +97,7 @@ export interface ResolvedThemeSettings {
   showRegionBar: boolean;
   showCardGroup: boolean;
   homeGroupOrder: string[];
+  homeRegionOrder: string[];
   enableHomeSort: boolean;
   homeSortField: HomeSortField;
   homeSortDirection: HomeSortDirection;
@@ -105,6 +106,7 @@ export interface ResolvedThemeSettings {
   showCostSummaryFloatingButton: boolean;
   showOverviewOnline: boolean;
   showOverviewBandwidth: boolean;
+  showOverviewConnections: boolean;
   showOverviewTraffic: boolean;
   showOverviewAsset: boolean;
   showOverviewMemory: boolean;
@@ -163,6 +165,7 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   showRegionBar: true,
   showCardGroup: true,
   homeGroupOrder: [],
+  homeRegionOrder: [],
   enableHomeSort: true,
   homeSortField: "default",
   homeSortDirection: HOME_SORT_NATURAL_DIRECTION.default,
@@ -171,6 +174,7 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   showCostSummaryFloatingButton: true,
   showOverviewOnline: true,
   showOverviewBandwidth: true,
+  showOverviewConnections: true,
   showOverviewTraffic: true,
   showOverviewAsset: true,
   showOverviewMemory: false,
@@ -383,6 +387,7 @@ export function normalizeThemeSettings(
     showRegionBar: enabledUnlessFalse(settings?.showRegionBar),
     showCardGroup: enabledUnlessFalse(settings?.showCardGroup),
     homeGroupOrder: normalizeHomeGroupOrder(settings?.homeGroupOrder),
+    homeRegionOrder: normalizeHomeRegionOrder(settings?.homeRegionOrder),
     enableHomeSort: enabledUnlessFalse(settings?.enableHomeSort),
     ...normalizeHomeSortDefault(settings?.homeSortField, settings?.homeSortDirection),
     costVisibility: normalizeCostVisibility(settings),
@@ -390,6 +395,7 @@ export function normalizeThemeSettings(
     showCostSummaryFloatingButton: enabledUnlessFalse(settings?.showCostSummaryFloatingButton),
     showOverviewOnline: enabledUnlessFalse(settings?.showOverviewOnline),
     showOverviewBandwidth: enabledUnlessFalse(settings?.showOverviewBandwidth),
+    showOverviewConnections: enabledUnlessFalse(settings?.showOverviewConnections),
     showOverviewTraffic: enabledUnlessFalse(settings?.showOverviewTraffic),
     showOverviewAsset: enabledUnlessFalse(settings?.showOverviewAsset),
     showOverviewMemory: settings?.showOverviewMemory === true,

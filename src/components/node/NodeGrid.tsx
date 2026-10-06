@@ -48,6 +48,7 @@ import { MiniNodeCard } from "./MiniNodeCard";
 import { NodeCard } from "./NodeCard";
 import { NodeListView } from "./NodeListView";
 import { RenewalReminder } from "./RenewalReminder";
+import { HomeBandwidthTrend } from "./HomeBandwidthTrend";
 import { canViewCosts, type NodeViewMode } from "@/utils/themeSettings";
 import type { RenewalReminderSource } from "@/utils/renewalReminder";
 
@@ -78,6 +79,8 @@ interface HomeOverview {
   trafficDown: number;
   netUp: number;
   netDown: number;
+  connectionsTcp: number;
+  connectionsUdp: number;
   ramUsed: number;
   ramTotal: number;
   diskUsed: number;
@@ -117,6 +120,7 @@ function HomeBrand({ siteName }: { siteName: string }) {
 }
 
 function HomeOverviewCards({
+  bandwidthUuids,
   overview,
   costSummary,
   costLoading,
@@ -127,6 +131,7 @@ function HomeOverviewCards({
   showAssetRating,
   showOverviewOnline,
   showOverviewBandwidth,
+  showOverviewConnections,
   showOverviewTraffic,
   showOverviewAsset,
   showOverviewMemory,
@@ -140,6 +145,7 @@ function HomeOverviewCards({
   dense,
   onWarmTraffic,
 }: {
+  bandwidthUuids: string[];
   overview: HomeOverview;
   costSummary: { remainingCny: number } | null;
   costLoading: boolean;
@@ -151,6 +157,7 @@ function HomeOverviewCards({
   showAssetRating: boolean;
   showOverviewOnline: boolean;
   showOverviewBandwidth: boolean;
+  showOverviewConnections: boolean;
   showOverviewTraffic: boolean;
   showOverviewAsset: boolean;
   showOverviewMemory: boolean;
@@ -184,6 +191,7 @@ function HomeOverviewCards({
   const trafficCompactLabel = `↑${formatCompactLabel(formatTraffic(overview.trafficUp), preferredTrafficUnit === "auto")} ↓${formatCompactLabel(formatTraffic(overview.trafficDown), preferredTrafficUnit === "auto")}`;
   const bandwidthDetailLabel = `↑ ${formatSpeedLabel(overview.netUp)} · ↓ ${formatSpeedLabel(overview.netDown)}`;
   const bandwidthCompactLabel = `↑${formatCompactLabel(formatSpeedLabel(overview.netUp), networkUnit === "auto")} ↓${formatCompactLabel(formatSpeedLabel(overview.netDown), networkUnit === "auto")}`;
+  const connectionsDetailLabel = `TCP ${overview.connectionsTcp.toLocaleString("zh-CN")} · UDP ${overview.connectionsUdp.toLocaleString("zh-CN")}`;
   const memoryUsedLabel = formatMemory(overview.ramUsed);
   const memoryTotalLabel = formatMemory(overview.ramTotal);
   const diskUsedLabel = formatDisk(overview.diskUsed);
@@ -270,7 +278,24 @@ function HomeOverviewCards({
           </p>
           {renderRating(bandwidthRating)}
         </div>
+        <HomeBandwidthTrend uuids={bandwidthUuids} />
       </article>}
+
+      {showOverviewConnections && (
+        <article className="overview-card" data-metric="connections">
+          <span className="overview-card-label">总连接数</span>
+          <div className="overview-card-main">
+            <p className="overview-card-value">
+              {(overview.connectionsTcp + overview.connectionsUdp).toLocaleString("zh-CN")}
+            </p>
+          </div>
+          <div className="overview-card-footer">
+            <p className="overview-card-sub" title={connectionsDetailLabel}>
+              {connectionsDetailLabel}
+            </p>
+          </div>
+        </article>
+      )}
 
       {showOverviewTraffic && <article className="overview-card" data-metric="traffic">
         <div className="overview-card-head">
@@ -535,6 +560,8 @@ export function NodeGrid() {
     let trafficDown = 0;
     let netUp = 0;
     let netDown = 0;
+    let connectionsTcp = 0;
+    let connectionsUdp = 0;
     let ramUsed = 0;
     let ramTotal = 0;
     let diskUsed = 0;
@@ -546,6 +573,11 @@ export function NodeGrid() {
       trafficDown += node.trafficDown;
       netUp += node.netUp;
       netDown += node.netDown;
+      // 离线或状态未知的节点保留旧读数，但不计入当前连接数。
+      if (node.online === true) {
+        connectionsTcp += node.connectionsTcp;
+        connectionsUdp += node.connectionsUdp;
+      }
       ramUsed += node.ramUsed ?? 0;
       ramTotal += node.ramTotal ?? 0;
       diskUsed += node.diskUsed ?? 0;
@@ -560,6 +592,8 @@ export function NodeGrid() {
       trafficDown,
       netUp,
       netDown,
+      connectionsTcp,
+      connectionsUdp,
       ramUsed,
       ramTotal,
       diskUsed,
@@ -570,6 +604,7 @@ export function NodeGrid() {
   const showAnyOverviewCard =
     themeSettings.showOverviewOnline ||
     themeSettings.showOverviewBandwidth ||
+    themeSettings.showOverviewConnections ||
     themeSettings.showOverviewTraffic ||
     themeSettings.showOverviewAsset ||
     themeSettings.showOverviewMemory ||
@@ -646,8 +681,8 @@ export function NodeGrid() {
   );
   // 地区选项在分组筛选之后统计,让国旗计数反映当前分组内的分布。
   const regionOptions = useMemo(
-    () => getHomeRegionOptions(groupFilteredNodes),
-    [groupFilteredNodes],
+    () => getHomeRegionOptions(groupFilteredNodes, themeSettings.homeRegionOrder),
+    [groupFilteredNodes, themeSettings.homeRegionOrder],
   );
   const filteredNodes = useMemo(
     () =>
@@ -784,6 +819,7 @@ export function NodeGrid() {
       <HomeBrand siteName={siteName} />
       {showHomeOverview && showAnyOverviewCard && (
         <HomeOverviewCards
+          bandwidthUuids={trafficUuids}
           overview={overview}
           dense={mode === "mini" || mode === "list"}
           showDetailButton={showCostDetailButton}
@@ -798,6 +834,7 @@ export function NodeGrid() {
           showAssetRating={themeSettings.showAssetRating}
           showOverviewOnline={themeSettings.showOverviewOnline}
           showOverviewBandwidth={themeSettings.showOverviewBandwidth}
+          showOverviewConnections={themeSettings.showOverviewConnections}
           showOverviewTraffic={themeSettings.showOverviewTraffic}
           showOverviewAsset={themeSettings.showOverviewAsset}
           showOverviewMemory={themeSettings.showOverviewMemory}

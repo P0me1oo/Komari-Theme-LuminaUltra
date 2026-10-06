@@ -1,0 +1,39 @@
+import { describe, expect, it } from "vitest";
+import { aggregateHomeBandwidth, bandwidthPath } from "@/utils/homeBandwidth";
+import { RATE_UP_METRIC, RATE_DOWN_METRIC, type TrafficMetricSeries } from "@/utils/trafficStats";
+
+const start = Date.parse("2026-10-06T00:00:00Z");
+function series(client: string, metricKey: string, samples: [number, number | null][]): TrafficMetricSeries {
+  return { client, metricKey, points: samples.map(([seconds, value]) => ({ time: new Date(start + seconds * 1000).toISOString(), value, count: 1 })) };
+}
+
+describe("首页一分钟带宽", () => {
+  it("对齐错开的节点上报，区分上下行并排除隐藏节点", () => {
+    const result = aggregateHomeBandwidth([
+      series("a", RATE_UP_METRIC, [[0, 10], [2, 20]]),
+      series("b", RATE_UP_METRIC, [[1, 30]]),
+      series("a", RATE_DOWN_METRIC, [[0, 50]]),
+      series("hidden", RATE_UP_METRIC, [[0, 999]]),
+    ], ["a", "b"], start, start + 3000);
+    expect(result.map((p) => p.up)).toEqual([10, 40, 50, 50]);
+    expect(result.map((p) => p.down)).toEqual([50, 50, 50, 50]);
+  });
+
+  it("不补造打开页面前的样本，零速率有效，超过五秒的旧读数留空", () => {
+    const result = aggregateHomeBandwidth([series("a", RATE_UP_METRIC, [[2, 0]])], ["a"], start, start + 60_000);
+    expect(result).toHaveLength(61);
+    expect(result[0].up).toBeNull();
+    expect(result[2].up).toBe(0);
+    expect(result[7].up).toBe(0);
+    expect(result[8].up).toBeNull();
+    expect(result[60].up).toBeNull();
+  });
+
+  it("忽略窗口外样本和无效速率，缺失值立即中断旧读数", () => {
+    const result = aggregateHomeBandwidth([series("a", RATE_UP_METRIC, [[-1, 200], [1, 10], [2, null], [3, -1], [4, 8], [61, 200]])], ["a"], start, start + 5000);
+    expect(result.map((p) => p.up)).toEqual([null, 10, null, null, 8, 8]);
+    const path = bandwidthPath(result, "up", 10);
+    expect(path.match(/M/g)).toHaveLength(2);
+    expect(path).not.toContain("NaN");
+  });
+});

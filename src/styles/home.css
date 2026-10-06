@@ -111,14 +111,13 @@
 .overview-card[data-metric="traffic"] { --metric-accent: var(--traffic-up); }
 .overview-card[data-metric="bandwidth"] { --metric-accent: var(--speed-high); }
 
-.home-bandwidth-trend { margin-top: auto; min-width: 0; }
-.home-bandwidth-legend { display: flex; gap: 10px; align-items: center; font-size: 10px; color: var(--text-tertiary); }
-.home-bandwidth-legend > :last-child { margin-left: auto; }
+.home-bandwidth-trend { min-width: 0; height: 100%; }
+.home-bandwidth-window { font-size: 10px; line-height: 1; color: var(--text-tertiary); }
 .home-bandwidth-up { color: var(--traffic-up); }
 .home-bandwidth-down { color: var(--traffic-down); }
-.home-bandwidth-trend svg { display: block; width: 100%; height: 44px; margin-top: 4px; overflow: hidden; }
-.home-bandwidth-trend path { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.home-bandwidth-empty { display: grid; place-items: center; height: 48px; font-size: 11px; color: var(--text-tertiary); }
+.home-bandwidth-trend svg { display: block; width: 100%; height: 100%; overflow: hidden; }
+.home-bandwidth-trend path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.home-bandwidth-empty { display: grid; place-items: center; height: 100%; font-size: 10px; line-height: 1; color: var(--text-tertiary); }
 .overview-card[data-metric="connections"] { --metric-accent: var(--accent-500); }
 .overview-card[data-metric="asset"] { --metric-accent: var(--accent-500); }
 .overview-card[data-metric="memory"] { --metric-accent: var(--progress-memory); }
@@ -1108,4 +1107,39 @@
   width: 22px;
   min-width: 22px;
   height: 22px;
+}
+
+/* 曲线占用卡片内部空间，保持增加曲线前的总览高度。 */
+.overview-card[data-metric="bandwidth"] {
+  display: grid;
+  grid-template-rows: 11px minmax(28px, 1fr) 18px 14.4px;
+  gap: 2px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.overview-card[data-metric="bandwidth"] .overview-card-label { line-height: 1; }
+.overview-card[data-metric="bandwidth"] .overview-card-footer { margin-top: 0; }
+
+@media (max-width: 680px) {
+  .overview-card[data-metric="bandwidth"] {
+    grid-template-rows: 11px minmax(24px, 1fr) 18px 13.2px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
+
+.home-overview.is-dense .overview-card[data-metric="bandwidth"] {
+  min-height: 84.4px;
+  grid-template-rows: 10px minmax(21px, 1fr) 14px 14.4px;
+  gap: 2px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+@media (max-width: 680px) {
+  .home-overview.is-dense .overview-card[data-metric="bandwidth"] {
+    min-height: 83.2px;
+    grid-template-rows: 10px minmax(21px, 1fr) 14px 13.2px;
+  }
 }

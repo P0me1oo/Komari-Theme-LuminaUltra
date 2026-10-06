@@ -261,7 +261,10 @@ function HomeOverviewCards({
       </article>}
 
       {showOverviewBandwidth && <article className="overview-card" data-metric="bandwidth">
-        <span className="overview-card-label">实时带宽</span>
+        <div className="overview-card-head">
+          <span className="overview-card-label">实时带宽</span>
+          <span className="home-bandwidth-window">60S</span>
+        </div>
         <div className="overview-card-main">
           <p
             className="overview-card-value"
@@ -271,14 +274,14 @@ function HomeOverviewCards({
             <span className="overview-card-unit">{rate.unit}</span>
           </p>
         </div>
+        <HomeBandwidthTrend uuids={bandwidthUuids} />
         <div className="overview-card-footer">
           <p className="overview-card-sub" title={bandwidthDetailLabel}>
-            <span className="overview-card-sub-full">{bandwidthDetailLabel}</span>
-            <span className="overview-card-sub-compact">{bandwidthCompactLabel}</span>
+            <span className="overview-card-sub-full"><span className="home-bandwidth-up">↑ {formatSpeedLabel(overview.netUp)}</span> · <span className="home-bandwidth-down">↓ {formatSpeedLabel(overview.netDown)}</span></span>
+            <span className="overview-card-sub-compact"><span className="home-bandwidth-up">{bandwidthCompactLabel.split(" ")[0]}</span> <span className="home-bandwidth-down">{bandwidthCompactLabel.split(" ")[1]}</span></span>
           </p>
           {renderRating(bandwidthRating)}
         </div>
-        <HomeBandwidthTrend uuids={bandwidthUuids} />
       </article>}
 
       {showOverviewConnections && (

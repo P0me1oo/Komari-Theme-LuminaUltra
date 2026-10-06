@@ -959,7 +959,9 @@ export interface TodayTrafficMetricResponse {
   intervalSeconds?: number;
 }
 
-/** 首页只请求最近一分钟的原始上下行速率，兼容旧版记录接口。 */
+let recentStatusApiAvailable = true;
+
+/** 首页请求最近一分钟上下行速率，稀疏历史由最近实时上报补齐。 */
 export async function getHomeBandwidthHistory(uuids: string[], options?: ApiCallOptions) {
   const end = Date.now();
   const start = end - 60_000;
@@ -972,7 +974,7 @@ export async function getHomeBandwidthHistory(uuids: string[], options?: ApiCall
       downsample: false, fill_empty: false,
     }, options?.signal, options?.timeout);
     series = payload.series.map((item) => ({
-      client: item.entity_id, metricKey: item.metric_key, points: item.points,
+      client: item.entity_id, metricKey: item.metric_key, points: item.points, intervalSeconds: item.interval_seconds,
     }));
   } catch (error) {
     if (options?.signal?.aborted) throw error;
@@ -997,6 +999,35 @@ export async function getHomeBandwidthHistory(uuids: string[], options?: ApiCall
       { client, metricKey: RATE_DOWN_METRIC, points: records.map((r) => ({ time: r.time, value: r.net_in ?? null, count: 1 })) },
     ]);
   }
+  // 某些后端的存储历史一分钟只有一个点；用内存中的最近上报补齐，避免把聚合点当成实时曲线。
+  const sparse = uuids.filter((uuid) => [RATE_UP_METRIC, RATE_DOWN_METRIC].some((key) =>
+    series.filter((item) => item.client === uuid && item.metricKey === key)
+      .flatMap((item) => item.points).filter((point) => point.value != null && Date.parse(point.time) >= start && Date.parse(point.time) <= end).length < 10,
+  ));
+  let cursor = 0;
+  const recentSchema = z.object({ records: z.array(z.object({
+    time: z.string(), net_out: z.number().nullable().optional(), net_in: z.number().nullable().optional(),
+  })) });
+  await Promise.all(Array.from({ length: Math.min(4, sparse.length) }, async () => {
+    while (recentStatusApiAvailable && cursor < sparse.length) {
+      const uuid = sparse[cursor++];
+      try {
+        const recent = await rpcCall("common:getNodeRecentStatus", { uuid }, recentSchema, options);
+        for (const [key, field] of [[RATE_UP_METRIC, "net_out"], [RATE_DOWN_METRIC, "net_in"]] as const) {
+          const points = recent.records.filter((r) => Date.parse(r.time) >= start && Date.parse(r.time) <= end)
+            .map((r) => ({ time: r.time, value: r[field] ?? null, count: 1 }));
+          const previous = series.filter((item) => item.client === uuid && item.metricKey === key);
+          if (points.filter((p) => p.value != null).length <= previous.flatMap((item) => item.points).filter((p) => p.value != null).length) continue;
+          series = series.filter((item) => item.client !== uuid || item.metricKey !== key);
+          series.push({ client: uuid, metricKey: key, points });
+        }
+      } catch (error) {
+        if (options?.signal?.aborted) throw error;
+        if (error instanceof RpcResponseError && error.code === -32601) recentStatusApiAvailable = false;
+        // 旧后端缺少实时记录接口时，保留已取到的历史样本。
+      }
+    }
+  }));
   return { series, start, end };
 }
 

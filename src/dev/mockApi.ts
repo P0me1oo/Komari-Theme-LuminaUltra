@@ -881,6 +881,18 @@ export function installDevMockApi() {
           return reply(Object.fromEntries(nodes.map((node) => [node.uuid, node])));
         case "common:getNodesLatestStatus":
           return reply(latestStatus());
+        case "common:getNodeRecentStatus": {
+          const now = Date.now();
+          const recent = trafficMetricPayload({
+            entity_ids: [payload.params?.uuid ?? nodes[0].uuid],
+            metric_keys: ["net.out.rate", "net.in.rate"],
+            start: new Date(now - 60_000).toISOString(), end: new Date(now).toISOString(),
+          });
+          const records = (recent.series[0]?.points ?? []).map((point, index) => ({
+            time: point.time, net_out: point.value, net_in: recent.series[1]?.points[index]?.value ?? null,
+          }));
+          return reply({ count: records.length, records });
+        }
         case "common:getRecords": {
           const isPing = payload.params?.type === "ping";
           const records = isPing

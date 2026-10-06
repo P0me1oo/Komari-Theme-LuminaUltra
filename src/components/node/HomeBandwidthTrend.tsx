@@ -22,18 +22,13 @@ export function HomeBandwidthTrend({ uuids }: { uuids: string[] }) {
   const max = Math.max(1, ...points.flatMap((point) => [point.up ?? 0, point.down ?? 0]));
   return (
     <div className="home-bandwidth-trend">
-      <div className="home-bandwidth-legend">
-        <span className="home-bandwidth-up">上传</span>
-        <span className="home-bandwidth-down">下载</span>
-        <span>{history.isError ? "历史更新失败" : "60S"}</span>
-      </div>
       {hasData ? (
         <svg viewBox="0 0 260 44" preserveAspectRatio="none" role="img" aria-label="最近 60 秒带宽趋势：实线为上传，虚线为下载">
           <title>最近 60 秒带宽趋势；窗口结束于 {new Date(history.data!.end).toLocaleTimeString()}</title>
           <path d={bandwidthPath(points, "up", max)} className="home-bandwidth-up" />
           <path d={bandwidthPath(points, "down", max)} className="home-bandwidth-down" strokeDasharray="3 3" />
         </svg>
-      ) : <div className="home-bandwidth-empty" role="status">{history.isLoading ? "正在加载历史…" : history.isError ? "无法获取带宽历史" : "暂无带宽历史"}</div>}
+      ) : <div className="home-bandwidth-empty" role="status">{history.isLoading ? "正在加载…" : history.isError ? "历史更新失败" : "暂无历史"}</div>}
     </div>
   );
 }

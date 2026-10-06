@@ -15,7 +15,7 @@ describe("首页一分钟带宽", () => {
       series("a", RATE_DOWN_METRIC, [[0, 50]]),
       series("hidden", RATE_UP_METRIC, [[0, 999]]),
     ], ["a", "b"], start, start + 3000);
-    expect(result.map((p) => p.up)).toEqual([10, 40, 50, 50]);
+    expect(result.map((p) => p.up)).toEqual([10, 45, 50, 50]);
     expect(result.map((p) => p.down)).toEqual([50, 50, 50, 50]);
   });
 
@@ -35,5 +35,20 @@ describe("首页一分钟带宽", () => {
     const path = bandwidthPath(result, "up", 10);
     expect(path.match(/M/g)).toHaveLength(2);
     expect(path).not.toContain("NaN");
+  });
+
+  it("十秒采样之间连续连线，不再每五秒截断", () => {
+    const result = aggregateHomeBandwidth([series("a", RATE_UP_METRIC, [[0, 10], [10, 30], [20, 10], [30, 20]])], ["a"], start, start + 30_000);
+    expect(result[5].up).toBe(20);
+    expect(result[15].up).toBe(20);
+    expect(result.every((point) => point.up != null)).toBe(true);
+    expect(bandwidthPath(result, "up", 30).match(/M/g)).toHaveLength(1);
+  });
+
+  it("正常两秒采样中出现长时间断档仍然留空", () => {
+    const result = aggregateHomeBandwidth([series("a", RATE_UP_METRIC, [[0, 10], [2, 30], [4, 10], [40, 20], [42, 10]])], ["a"], start, start + 45_000);
+    expect(result[9].up).toBe(10);
+    expect(result[10].up).toBeNull();
+    expect(result[40].up).toBe(20);
   });
 });

@@ -1,4 +1,5 @@
 import { RATE_DOWN_METRIC, RATE_UP_METRIC, type TrafficMetricSeries } from "@/utils/trafficStats";
+import { inferHistoryIntervalSeconds } from "@/utils/historyRange";
 
 export interface BandwidthPoint {
   time: number;
@@ -6,7 +7,7 @@ export interface BandwidthPoint {
   down: number | null;
 }
 
-/** 对齐各节点的上报时间；读数最多沿用 5 秒，不向首个样本之前补值。 */
+/** 按真实采样间隔连接相邻样本；不向首个样本之前补值，也不跨越异常长的断档。 */
 export function aggregateHomeBandwidth(
   series: TrafficMetricSeries[], uuids: string[], start: number, end: number,
 ): BandwidthPoint[] {
@@ -15,6 +16,7 @@ export function aggregateHomeBandwidth(
     (item.metricKey === RATE_UP_METRIC || item.metricKey === RATE_DOWN_METRIC))
     .map((item) => ({
       direction: item.metricKey === RATE_UP_METRIC ? "up" as const : "down" as const,
+      maxGap: Math.max(5000, Math.min(60_000, (item.intervalSeconds || inferHistoryIntervalSeconds(item.points) || 2) * 1500)),
       points: item.points.map((point) => ({ time: Date.parse(point.time), value: point.value }))
         .filter((point) => Number.isFinite(point.time) && point.time >= start && point.time <= end)
         .sort((a, b) => a.time - b.time),
@@ -26,8 +28,13 @@ export function aggregateHomeBandwidth(
     for (const source of sources) {
       while (source.index + 1 < source.points.length && source.points[source.index + 1].time <= time) source.index++;
       const sample = source.points[source.index];
-      if (!sample || time - sample.time > 5000 || sample.value == null || !Number.isFinite(sample.value) || sample.value < 0) continue;
-      point[source.direction] = (point[source.direction] ?? 0) + sample.value;
+      if (!sample || sample.value == null || !Number.isFinite(sample.value) || sample.value < 0) continue;
+      const next = source.points[source.index + 1];
+      let value = sample.value;
+      if (next && next.time - sample.time <= source.maxGap && next.value != null && Number.isFinite(next.value) && next.value >= 0) {
+        value += (next.value - value) * (time - sample.time) / (next.time - sample.time);
+      } else if (time - sample.time > 5000) continue;
+      point[source.direction] = (point[source.direction] ?? 0) + value;
     }
     result.push(point);
   }

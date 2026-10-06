@@ -46,3 +46,19 @@ it("取消请求不再触发兼容查询，空节点列表不发请求", async (
   expect((await getHomeBandwidthHistory([])).series).toEqual([]);
   expect(call).not.toHaveBeenCalled();
 });
+
+it("存储历史只有一个点时改用后端保存的最近一分钟实时上报", async () => {
+  const now = Date.now();
+  const time = (seconds: number) => new Date(now - seconds * 1000).toISOString();
+  call.mockImplementation((method: string) => {
+    if (method === "common:getNodeRecentStatus") return Promise.resolve({ records: Array.from({ length: 30 }, (_, index) => ({ time: time(index * 2 + 1), net_out: index * 10, net_in: index * 20 })) });
+    return Promise.resolve({ series: [
+      { entity_id: "a", metric_key: "net.out.rate", interval_seconds: 60, points: [{ time: time(40), value: 8 }] },
+      { entity_id: "a", metric_key: "net.in.rate", interval_seconds: 60, points: [{ time: time(40), value: 9 }] },
+    ] });
+  });
+  const { getHomeBandwidthHistory } = await import("@/services/api");
+  const result = await getHomeBandwidthHistory(["a"]);
+  expect(result.series.map((s) => s.points.length)).toEqual([30, 30]);
+  expect(call).toHaveBeenCalledWith("common:getNodeRecentStatus", { uuid: "a" }, undefined);
+});

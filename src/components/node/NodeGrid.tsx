@@ -50,7 +50,6 @@ import { MiniNodeCard } from "./MiniNodeCard";
 import { NodeCard } from "./NodeCard";
 import { NodeListView } from "./NodeListView";
 import { RenewalReminder } from "./RenewalReminder";
-import { HomeBandwidthTrend } from "./HomeBandwidthTrend";
 import { canViewCosts, type NodeViewMode } from "@/utils/themeSettings";
 import type { RenewalReminderSource } from "@/utils/renewalReminder";
 
@@ -122,7 +121,6 @@ function HomeBrand({ siteName }: { siteName: string }) {
 }
 
 function HomeOverviewCards({
-  bandwidthUuids,
   overview,
   costSummary,
   costLoading,
@@ -147,7 +145,6 @@ function HomeOverviewCards({
   dense,
   onWarmTraffic,
 }: {
-  bandwidthUuids: string[];
   overview: HomeOverview;
   costSummary: { remainingCny: number } | null;
   costLoading: boolean;
@@ -263,10 +260,7 @@ function HomeOverviewCards({
       </article>}
 
       {showOverviewBandwidth && <article className="overview-card" data-metric="bandwidth">
-        <div className="overview-card-head">
-          <span className="overview-card-label">实时带宽</span>
-          <span className="home-bandwidth-window">60S</span>
-        </div>
+        <span className="overview-card-label">实时带宽</span>
         <div className="overview-card-main">
           <p
             className="overview-card-value"
@@ -276,7 +270,6 @@ function HomeOverviewCards({
             <span className="overview-card-unit">{rate.unit}</span>
           </p>
         </div>
-        <HomeBandwidthTrend uuids={bandwidthUuids} />
         <div className="overview-card-footer">
           <p className="overview-card-sub" title={bandwidthDetailLabel}>
             <span className="overview-card-sub-full"><span className="home-bandwidth-up">↑ {formatSpeedLabel(overview.netUp)}</span> · <span className="home-bandwidth-down">↓ {formatSpeedLabel(overview.netDown)}</span></span>
@@ -773,7 +766,6 @@ export function NodeGrid() {
       <HomeBrand siteName={siteName} />
       {showHomeOverview && showAnyOverviewCard && (
         <HomeOverviewCards
-          bandwidthUuids={trafficUuids}
           overview={overview}
           dense={mode === "mini" || mode === "list"}
           showDetailButton={showCostDetailButton}

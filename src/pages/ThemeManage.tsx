@@ -30,9 +30,11 @@ import { InstancePanel } from "@/components/instance/InstancePanel";
 import { MultiPingNodeConfigPanel } from "@/components/theme/MultiPingNodeConfigPanel";
 import { NetworkSettings } from "@/components/theme/NetworkSettings";
 import { getNetworkConfig, saveNetworkConfig, type NetworkConfig } from "@/services/networkInfo";
+import { TrafficResetConfigPanel } from "@/components/theme/TrafficResetConfigPanel";
 import { Spinner } from "@/components/ui/Spinner";
 import { Flag } from "@/components/ui/Flag";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
+import { useAdminEntryPath } from "@/hooks/useAdminEntryPath";
 import { useHourlyClock } from "@/hooks/useClock";
 import { queryClient } from "@/services/queryClient";
 import {
@@ -71,8 +73,10 @@ import {
   normalizeHomeGroupOrder,
   normalizeHomeRegionOrder,
   getHomeRegionOptions,
+  mergeHomeOptionOrder,
   sortHomeGroupOptions,
 } from "@/utils/homeNodes";
+import { normalizeTrafficResetDays } from "@/utils/trafficReset";
 import {
   HOMEPAGE_MULTI_PING_TASK_COUNT,
   normalizeHomepageMultiPingNodeTaskIds,
@@ -355,6 +359,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     showIpStackBadges: settings.showIpStackBadges,
     showConnections: settings.showConnections,
     showTodayTrafficPopover: settings.showTodayTrafficPopover,
+    trafficResetDays: normalizeTrafficResetDays(settings.trafficResetDays),
     hiddenNodes: settings.hiddenNodes,
     costIgnoredNodes: settings.costIgnoredNodes,
     // 按键排序:costPremiums 的键序随编辑历史漂移(删掉再加回同一键会排到最后),而 dirty /
@@ -827,6 +832,8 @@ const MultiPingNodeConfigControl = memo(function MultiPingNodeConfigControl({
 
 export function ThemeManage() {
   const now = useHourlyClock();
+  const adminEntryPath = useAdminEntryPath();
+  const adminPingHref = adminEntryPath ? `${adminEntryPath}/ping` : undefined;
   const {
     data: config,
     isLoading: configLoading,
@@ -842,6 +849,7 @@ export function ThemeManage() {
   const [taskSearch, setTaskSearch] = useState("");
   const [nodeSearch, setNodeSearch] = useState("");
   const [premiumSearch, setPremiumSearch] = useState("");
+  const [trafficResetOpen, setTrafficResetOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -957,8 +965,7 @@ export function ThemeManage() {
     [sortedClients],
   );
 
-  // 后端实际存在的分组,按首页 Tab 的渲染顺序排列(已配置的在前,未排序的在后)。
-  // 用户直接拖动这个列表来调整顺序。
+  // 主题管理与首页拖拽共用顺序，保留暂时不可见的分组位置。
   const availableGroups = useMemo(
     () => dedupeGroupLabels(sortedClients.map((client) => client.group)),
     [sortedClients],
@@ -972,7 +979,7 @@ export function ThemeManage() {
     if (target < 0 || target >= orderedDraftGroups.length) return;
     const next = [...orderedDraftGroups];
     [next[index], next[target]] = [next[target], next[index]];
-    patch("homeGroupOrder", next);
+    patch("homeGroupOrder", mergeHomeOptionOrder(draft.homeGroupOrder, next));
   };
 
   const filteredTasks = useMemo(() => {
@@ -1131,7 +1138,7 @@ export function ThemeManage() {
     if (target < 0 || target >= orderedDraftRegions.length) return;
     const next = orderedDraftRegions.map(({ code }) => code);
     [next[index], next[target]] = [next[target], next[index]];
-    patch("homeRegionOrder", next);
+    patch("homeRegionOrder", mergeHomeOptionOrder(draft.homeRegionOrder, next));
   };
   const draftCostRateApiUrlInvalid =
     draft.costRateApiUrl.trim() !== "" && !isCostRateApiUrlValid(draft.costRateApiUrl.trim());
@@ -1214,6 +1221,9 @@ export function ThemeManage() {
     costRateApiUrlDirty ||
     videoInputInvalid;
   const isDirty = themeDirty || networkDirty;
+  const draftSaveInvalid =
+    draftCostRateApiUrlInvalid || videoInputInvalid || draftMultiPingInvalid;
+  const saveDisabled = !isDirty || draftSaveInvalid;
 
   // 用户重新编辑后清掉「已保存」提示,避免过期的成功提示和 dirty 表单并存。
   useEffect(() => {
@@ -1257,9 +1267,7 @@ export function ThemeManage() {
     if (
       !config?.theme ||
       savingDraftRef.current ||
-      draftCostRateApiUrlInvalid ||
-      videoInputInvalid ||
-      draftMultiPingInvalid
+      draftSaveInvalid
     ) {
       return false;
     }
@@ -1418,13 +1426,7 @@ export function ThemeManage() {
             <button
               type="button"
               onClick={handleSave}
-              disabled={
-                !isDirty ||
-                saving ||
-                draftCostRateApiUrlInvalid ||
-                videoInputInvalid ||
-                draftMultiPingInvalid
-              }
+              disabled={saveDisabled || saving}
               className="theme-manage-button is-primary"
             >
               {saving ? <Spinner size={14} /> : <Save size={14} />}
@@ -2274,6 +2276,38 @@ export function ThemeManage() {
       </InstancePanel>
 
       <InstancePanel
+        title="流量重置日"
+        description="按服务器设置每月重置日，未自定义的服务器继续按账单到期日推算。"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-[13px] text-[var(--text-secondary)]">
+            已自定义 {sortedClients.filter((client) => draft.trafficResetDays[client.uuid] != null).length} 台，其余跟随账单日
+          </span>
+          <button
+            type="button"
+            disabled={clientsLoading || Boolean(clientsError)}
+            onClick={() => setTrafficResetOpen(true)}
+            className="theme-manage-button"
+          >
+            <SlidersHorizontal size={14} />配置重置日
+          </button>
+        </div>
+        {trafficResetOpen && (
+          <TrafficResetConfigPanel
+            clients={sortedClients}
+            days={draft.trafficResetDays}
+            now={now}
+            saving={saving}
+            saveDisabled={saveDisabled}
+            saveError={error}
+            onChange={(next) => patch("trafficResetDays", next)}
+            onClose={() => setTrafficResetOpen(false)}
+            onSave={handleSave}
+          />
+        )}
+      </InstancePanel>
+
+      <InstancePanel
         kicker={<><span className="instance-panel-kicker-num">07</span>花费</>}
         title="服务器花费"
         description="资产统计页（/assets）使用实时汇率计算年化总支出、月均支出与剩余价值；忽略列表中的节点不会计入费用。费用可见范围决定谁能看到价格数字，到期时间不受它影响。两个入口开关都关闭时，直接访问资产页也会跳回首页。"
@@ -2414,7 +2448,7 @@ export function ThemeManage() {
             {" "}
             如果当前还没有可用任务，请先前往
             {" "}
-            <a href="/admin/ping" className="theme-manage-inline-link">
+            <a href={adminPingHref} className="theme-manage-inline-link">
               后台 Ping 管理
             </a>
             {" "}
@@ -2541,12 +2575,7 @@ export function ThemeManage() {
                   disabled={draftMultiPingInvalid || clientsLoading || tasksLoading}
                   saving={saving}
                   saveError={error}
-                  saveDisabled={
-                    !isDirty ||
-                    draftCostRateApiUrlInvalid ||
-                    videoInputInvalid ||
-                    draftMultiPingInvalid
-                  }
+                  saveDisabled={saveDisabled}
                   onChange={patchNodeMultiPingTaskIds}
                   onSave={handleSave}
                 />
@@ -2598,7 +2627,7 @@ export function ThemeManage() {
           {noTasksYet && (
             <div className="theme-manage-empty-state">
               <span>当前还没有可用于首页展示的 Ping 任务。</span>
-              <a href="/admin/ping" className="theme-manage-inline-link">
+              <a href={adminPingHref} className="theme-manage-inline-link">
                 前往后台 Ping 管理创建任务
               </a>
             </div>

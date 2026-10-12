@@ -5,6 +5,7 @@ import { usePreferences } from "@/hooks/usePreferences";
 import { useViewMode } from "@/hooks/useViewMode";
 import { useNodeStoreStatus } from "@/hooks/useNode";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminEntryPath } from "@/hooks/useAdminEntryPath";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { useNetworkDetection } from "@/hooks/useNetworkDetection";
 import { preloadAssetsPage } from "@/services/assetsPageLoader";
@@ -45,6 +46,7 @@ export function FloatingControls({
   const { run: runDetection, running: detectionRunning, notice: detectionNotice, reset: resetDetection } = useNetworkDetection();
   const noticeMessage = detectionNotice?.message;
   const noticeError = detectionNotice?.error;
+  const adminEntryPath = useAdminEntryPath();
   const themeSettings = useThemeSettings();
   const { failureStreak } = useNodeStoreStatus();
   const [collapsed, setCollapsed] = useState(true);
@@ -203,9 +205,9 @@ export function FloatingControls({
                     <SlidersHorizontal size={16} />
                   </Link>
                 )}
-                {showAdmin && (
+                {showAdmin && adminEntryPath && (
                   <a
-                    href="/admin"
+                    href={adminEntryPath}
                     aria-label={me?.logged_in ? "管理" : "后台登录"}
                     title={me?.logged_in ? "管理" : "后台登录"}
                     tabIndex={hiddenTabIndex}

@@ -1205,6 +1205,44 @@ export async function getAdminPingTasks(options?: ApiCallOptions): Promise<PingT
   return (await apiGet("/api/admin/ping", z.array(PingTaskSchema), options)) as PingTask[];
 }
 
+const AdminPluginListSchema = z.array(
+  z.object({
+    short: z.string(),
+    enabled: z.boolean(),
+    running: z.boolean(),
+  }),
+);
+const AdminPluginConfigurationSchema = z.object({
+  data: z.record(z.string(), z.unknown()),
+});
+
+/** 管理员登录后读取后台路径插件的私有配置。 */
+export async function getAdminEntryPath(options?: ApiCallOptions): Promise<string> {
+  const plugins = await apiGet(
+    "/api/admin/plugin/list",
+    AdminPluginListSchema,
+    options,
+  );
+  if (!plugins.some((plugin) =>
+    plugin.short === "admin-path" && plugin.enabled && plugin.running
+  )) {
+    return "/admin";
+  }
+
+  const configuration = await apiGet(
+    "/api/admin/plugin/configuration?short=admin-path",
+    AdminPluginConfigurationSchema,
+    options,
+  );
+  const value = configuration.data.adminPath;
+  if (typeof value !== "string") return "/admin";
+  const path = value.trim().replace(/\/+$/, "");
+  return path.length <= 128 &&
+    /^\/[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(path)
+    ? path
+    : "/admin";
+}
+
 export async function saveThemeSettings(
   theme: string,
   settings: Record<string, unknown>,

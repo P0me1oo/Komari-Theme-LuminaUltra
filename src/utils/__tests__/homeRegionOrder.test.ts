@@ -3,7 +3,7 @@ import { getHomeRegionOptions, normalizeHomeRegionOrder } from "@/utils/homeNode
 import { normalizeThemeSettings } from "@/utils/themeSettings";
 
 it("自定义地区顺序持久化并归一化，新增地区沿用默认顺序追加", () => {
-  const order = normalizeThemeSettings({ homeRegionOrder: [" us ", "JP", "US", null, 123] }).homeRegionOrder;
+  const order = normalizeThemeSettings({ homeRegionOrder: [" us ", "JP", "US", null, 123] } as never).homeRegionOrder;
   expect(order).toEqual(["US", "JP"]);
   const nodes = ["CN", "US", "JP", "SG", "US"].map((region) => ({ region }));
   expect(getHomeRegionOptions(nodes, order)).toEqual([

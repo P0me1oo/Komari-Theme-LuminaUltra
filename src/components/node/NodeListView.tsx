@@ -371,8 +371,8 @@ const NodeRow = memo(function NodeRow({ uuid, showCosts }: { uuid: string; showC
         title={`剩余 ${traffic.remainingLabel} · ${traffic.detail}`}
       >
         <div className="node-list-traffic-rows">
-          <StackLine icon={<ArrowUp size={11} strokeWidth={2.1} />} value={formatTraffic(node.trafficUp)} />
-          <StackLine icon={<ArrowDown size={11} strokeWidth={2.1} />} value={formatTraffic(node.trafficDown)} />
+          <StackLine icon={<ArrowUp size={11} strokeWidth={2.1} />} value={`${node.trafficApproximate ? "≈" : ""}${formatTraffic(node.trafficUp)}`} />
+          <StackLine icon={<ArrowDown size={11} strokeWidth={2.1} />} value={`${node.trafficApproximate ? "≈" : ""}${formatTraffic(node.trafficDown)}`} />
         </div>
         <span className="node-list-traffic-quota" style={{ color: traffic.color }}>
           {usedPct}

@@ -67,7 +67,7 @@ describe("monthly traffic reset from expiry day", () => {
   it("falls back to expiry when an override is removed or invalid", () => {
     const expiry = local(2026, 11, 30);
     const now = local(2026, 9, 9);
-    for (const day of [undefined, 0, -1, 32, 1.5, NaN, Infinity]) {
+    for (const day of [undefined, 0, 32, 1.5, NaN, Infinity]) {
       expect(getTrafficResetDisplay(expiry, now, day)).toEqual(getTrafficResetDisplay(expiry, now));
     }
   });
@@ -85,8 +85,8 @@ describe("monthly traffic reset from expiry day", () => {
 describe("normalizeTrafficResetDays", () => {
   it("accepts only integer days and keeps stable UUID ordering without mutating input", () => {
     const input = { z: 31, a: 1, blank: "", string: "15", zero: 0, negative: -1, fraction: 1.5, big: 32, inf: Infinity, nan: NaN, bool: true, " ": 15 };
-    expect(normalizeTrafficResetDays(input)).toEqual({ a: 1, z: 31 });
-    expect(Object.keys(normalizeTrafficResetDays(input))).toEqual(["a", "z"]);
+    expect(normalizeTrafficResetDays(input)).toEqual({ a: 1, negative: -1, z: 31 });
+    expect(Object.keys(normalizeTrafficResetDays(input))).toEqual(["a", "negative", "z"]);
     expect(input.string).toBe("15");
   });
 

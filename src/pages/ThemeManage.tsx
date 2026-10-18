@@ -360,6 +360,10 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     showConnections: settings.showConnections,
     showTodayTrafficPopover: settings.showTodayTrafficPopover,
     trafficResetDays: normalizeTrafficResetDays(settings.trafficResetDays),
+    trafficMode: settings.trafficMode,
+    trafficResetDefault: settings.trafficResetDefault,
+    trafficResetUtcOffset: settings.trafficResetUtcOffset,
+    trafficResetTz: settings.trafficResetTz,
     hiddenNodes: settings.hiddenNodes,
     costIgnoredNodes: settings.costIgnoredNodes,
     // 按键排序:costPremiums 的键序随编辑历史漂移(删掉再加回同一键会排到最后),而 dirty /
@@ -2276,12 +2280,37 @@ export function ThemeManage() {
       </InstancePanel>
 
       <InstancePanel
-        title="流量重置日"
-        description="按服务器设置每月重置日，未自定义的服务器继续按账单到期日推算。"
+        title="流量周期与重置日"
+        description="可沿用探针计数，也可根据历史记录统计本周期用量。"
       >
+        <div className="mb-4 grid gap-4 sm:grid-cols-3">
+          <label className="flex flex-col gap-2 text-[13px]">
+            统计模式
+            <select aria-label="流量统计模式" value={draft.trafficMode} onChange={(event) => patch("trafficMode", event.target.value as "agent" | "theme")} className="surface-inset px-3 py-2">
+              <option value="agent">探针计数</option>
+              <option value="theme">按重置日统计</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-2 text-[13px]">
+            默认重置日
+            <select aria-label="默认流量重置日" value={draft.trafficResetDefault} onChange={(event) => patch("trafficResetDefault", event.target.value === "expiry" || event.target.value === "none" ? event.target.value : Number(event.target.value))} className="surface-inset px-3 py-2">
+              <option value="expiry">跟随账单到期日</option>
+              <option value="none">不重置</option>
+              {Array.from({ length: 31 }, (_, index) => <option key={index + 1} value={index + 1}>每月 {index + 1} 日</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-2 text-[13px]">
+            默认时区
+            <input aria-label="默认流量重置时区" type="number" min={-12} max={14} step={0.25} value={draft.trafficResetUtcOffset} onChange={(event) => { if (event.target.value !== "" && event.currentTarget.validity.valid) patch("trafficResetUtcOffset", Number(event.target.value)); }} className="surface-inset px-3 py-2" />
+          </label>
+        </div>
+        <p className="mb-4 text-[12px] text-[var(--text-secondary)]">
+          {draft.trafficMode === "theme" ? "首页汇总、卡片和详情按各服务器周期统计。历史不足时显示 ≈，完整月度统计需至少保留 32 天记录。" : "直接显示 Agent 上报的累计用量，重置日只用于日期提示。"}
+          {" "}时区填写 UTC 偏移，例如北京时间为 8。
+        </p>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="text-[13px] text-[var(--text-secondary)]">
-            已自定义 {sortedClients.filter((client) => draft.trafficResetDays[client.uuid] != null).length} 台，其余跟随账单日
+            已自定义 {sortedClients.filter((client) => draft.trafficResetDays[client.uuid] != null).length} 台，其余跟随默认规则
           </span>
           <button
             type="button"
@@ -2296,11 +2325,14 @@ export function ThemeManage() {
           <TrafficResetConfigPanel
             clients={sortedClients}
             days={draft.trafficResetDays}
+            timezones={draft.trafficResetTz}
+            options={{ mode: draft.trafficMode, defaultDay: draft.trafficResetDefault, utcOffset: draft.trafficResetUtcOffset }}
             now={now}
             saving={saving}
             saveDisabled={saveDisabled}
             saveError={error}
             onChange={(next) => patch("trafficResetDays", next)}
+            onTimezonesChange={(next) => patch("trafficResetTz", next)}
             onClose={() => setTrafficResetOpen(false)}
             onSave={handleSave}
           />

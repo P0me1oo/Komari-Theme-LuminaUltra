@@ -58,6 +58,10 @@ export function useNodeCardModel(
   const {
     showCardGroup,
     trafficResetDays,
+    trafficMode,
+    trafficResetDefault,
+    trafficResetUtcOffset,
+    trafficResetTz,
     fakePingForUnbound,
     homepagePingBindings,
     enableHomepageMultiPing,
@@ -84,7 +88,9 @@ export function useNodeCardModel(
       multiPingActive || hasHomepagePingTaskBinding(uuid, homepagePingBindings),
     [homepagePingBindings, multiPingActive, uuid],
   );
-  const now = useHourlyClock();
+  const hourNow = useHourlyClock();
+  const resetNow = useMinuteClock(trafficMode === "theme");
+  const now = trafficMode === "theme" ? resetNow : hourNow;
   const ping = useFakePingFallback(
     uuid,
     realPing,
@@ -178,12 +184,14 @@ export function useNodeCardModel(
       subtitle: joinDisplayParts(subtitleParts),
       expire: formatExpireDays(meta.expired_at, now),
       expireColor: getExpireTextColor(meta.expired_at, now),
-      trafficReset: getTrafficResetDisplay(meta.expired_at, now, trafficResetDays[uuid]),
+      trafficReset: getTrafficResetDisplay(meta.expired_at, now, trafficResetDays[uuid], {
+        defaultDay: trafficResetDefault, utcOffset: trafficResetTz[uuid] ?? trafficResetUtcOffset, mode: trafficMode,
+      }),
       renewalPrice: formatRenewalPrice(meta),
       osName: resolveOsInfo(meta.os).name,
       loadBaseline: meta.cpu_cores > 0 ? meta.cpu_cores : 4,
     };
-  }, [meta, now, showCardGroup, trafficResetDays, uuid]);
+  }, [meta, now, showCardGroup, trafficResetDays, trafficMode, trafficResetDefault, trafficResetUtcOffset, trafficResetTz, uuid]);
 
   // ping 派生的颜色只在 ping item 变化时才变。
   const pingModel = useMemo(
@@ -227,7 +235,8 @@ export function useNodeCardModel(
       metrics.trafficDown,
       meta.traffic_limit,
     );
-    const trafficUsedLabel = formatTraffic(trafficUsage.used);
+    const estimate = metrics.trafficApproximate ? "≈" : "";
+    const trafficUsedLabel = `${estimate}${formatTraffic(trafficUsage.used)}`;
     // 不限量时渲染成 ∞，让剩余值和"已用/上限"那行与限量情况保持一致
     //（"剩余 ∞" + "2.73 GB / ∞"）。
     const trafficLimitLabel = trafficUsage.unlimited ? "∞" : formatTraffic(trafficUsage.limit);
@@ -237,7 +246,7 @@ export function useNodeCardModel(
     const traffic: TrafficDisplay = {
       fraction: trafficUsage.fraction,
       color: trafficColor,
-      remainingLabel: trafficUsage.unlimited ? "∞" : formatTraffic(trafficUsage.remaining),
+      remainingLabel: trafficUsage.unlimited ? "∞" : `${estimate}${formatTraffic(trafficUsage.remaining)}`,
       detail: `${trafficUsedLabel} / ${trafficLimitLabel}`,
       typeLabel: trafficTypeLabel(meta.traffic_limit_type),
     };

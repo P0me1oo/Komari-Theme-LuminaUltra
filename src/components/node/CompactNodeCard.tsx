@@ -517,7 +517,7 @@ function CompactNodeInfoStrip({
                 aria-label="上行"
               />
             )}
-            value={formatTraffic(node.trafficUp)}
+            value={`${node.trafficApproximate ? "≈" : ""}${formatTraffic(node.trafficUp)}`}
           />
           <CompactInfoRow
             icon={(
@@ -527,7 +527,7 @@ function CompactNodeInfoStrip({
                 aria-label="下行"
               />
             )}
-            value={formatTraffic(node.trafficDown)}
+            value={`${node.trafficApproximate ? "≈" : ""}${formatTraffic(node.trafficDown)}`}
           />
         </CompactInfoTile>
       )}

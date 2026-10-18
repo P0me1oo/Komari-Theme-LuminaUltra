@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Search, X } from "lucide-react";
 import { ThemeConfigSaveFooter } from "@/components/theme/ThemeConfigSaveFooter";
 import type { AdminClient } from "@/types/komari";
-import { getTrafficResetDisplay } from "@/utils/trafficReset";
+import { getTrafficResetDisplay, trafficTimezoneLabel, type TrafficResetOptions } from "@/utils/trafficReset";
 
 const DAY_OPTIONS = [
-  <option key="default" value="">跟随账单日</option>,
+  <option key="default" value="">跟随默认规则</option>,
+  <option key="none" value="-1">不重置</option>,
   ...Array.from({ length: 31 }, (_, index) => (
     <option key={index + 1} value={index + 1}>每月 {index + 1} 日</option>
   )),
@@ -14,21 +15,27 @@ const DAY_OPTIONS = [
 export function TrafficResetConfigPanel({
   clients,
   days,
+  timezones,
+  options,
   now,
   saving,
   saveDisabled,
   saveError,
   onChange,
+  onTimezonesChange,
   onClose,
   onSave,
 }: {
   clients: AdminClient[];
   days: Record<string, number>;
+  timezones: Record<string, number>;
+  options: TrafficResetOptions;
   now: number;
   saving: boolean;
   saveDisabled: boolean;
   saveError: string | null;
   onChange: (next: Record<string, number>) => void;
+  onTimezonesChange: (next: Record<string, number>) => void;
   onClose: () => void;
   onSave: () => Promise<boolean>;
 }) {
@@ -90,10 +97,10 @@ export function TrafficResetConfigPanel({
             <CalendarDays size={18} />流量重置日
           </h2>
           <p id="traffic-reset-description" className="mt-2 text-[12px] text-[var(--text-secondary)]">
-            此设置用于首页流量重置日期提示，请与服务器 Agent 的实际重置日保持一致。
+            {options.mode === "theme" ? "按指定时区的重置日零点开始新周期；未设置重置日的服务器沿用探针计数。" : "探针计数模式只改变日期提示，实际归零由 Agent 的月重置设置决定。"}
           </p>
           <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
-            已自定义 {customCount} 台，其余跟随账单日（到期日的每月几号）。不足该日取月末。
+            已自定义 {customCount} 台，其余跟随默认规则。月份不足指定日期时取月末。
           </p>
         </div>
         <button type="button" onClick={onClose} className="multi-ping-config-icon-button" aria-label="关闭重置日配置">
@@ -121,7 +128,7 @@ export function TrafficResetConfigPanel({
           >
             <option value="all">全部</option>
             <option value="custom">已自定义</option>
-            <option value="default">跟随账单日</option>
+            <option value="default">跟随默认规则</option>
           </select>
         </div>
 
@@ -154,12 +161,14 @@ export function TrafficResetConfigPanel({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4">
           <div className="traffic-reset-row traffic-reset-columns text-[11px] text-[var(--text-tertiary)]" aria-hidden="true">
-            <span /><span>服务器</span><span>重置日设置</span><span>当前生效规则</span><span>下次重置</span>
+            <span /><span>服务器</span><span>重置日与时区</span><span>当前生效规则</span><span>下次重置</span>
           </div>
           <ul aria-label="服务器重置日配置">
             {filtered.map((client) => {
               const customDay = days[client.uuid];
-              const reset = getTrafficResetDisplay(client.expired_at, now, customDay);
+              const reset = getTrafficResetDisplay(client.expired_at, now, customDay, {
+                ...options, utcOffset: timezones[client.uuid] ?? options.utcOffset,
+              });
               const name = client.name || client.uuid;
               return (
                 <li key={client.uuid} className="traffic-reset-row border-b border-[var(--hairline)] text-[12px]">
@@ -180,6 +189,7 @@ export function TrafficResetConfigPanel({
                       {client.group || client.uuid}
                     </div>
                   </div>
+                  <div className="flex min-w-0 flex-col gap-2">
                   <select
                     value={customDay ?? ""}
                     onChange={(event) => applyDay([client.uuid], event.target.value)}
@@ -188,8 +198,25 @@ export function TrafficResetConfigPanel({
                   >
                     {DAY_OPTIONS}
                   </select>
+                  <select
+                    value={timezones[client.uuid] ?? ""}
+                    aria-label={`${name} 重置时区`}
+                    className="surface-inset min-w-0 px-2 py-2"
+                    onChange={(event) => {
+                      const next = { ...timezones };
+                      if (event.target.value === "") delete next[client.uuid];
+                      else next[client.uuid] = Number(event.target.value);
+                      onTimezonesChange(next);
+                    }}
+                  >
+                    <option value="">默认（{trafficTimezoneLabel(options.utcOffset ?? 8)}）</option>
+                    {Array.from({ length: 105 }, (_, index) => -12 + index / 4).map((offset) =>
+                      <option key={offset} value={offset}>{trafficTimezoneLabel(offset)}</option>)}
+                  </select>
+                  </div>
                   <span className="traffic-reset-rule text-[var(--text-secondary)]">
-                    {reset ? `每月 ${reset.day} 日 · ${customDay != null ? "自定义" : "账单日"}` : "无有效账单日"}
+                    {reset ? `每月 ${reset.day} 日 · ${customDay != null ? "自定义" : "默认规则"}`
+                      : customDay === -1 || options.defaultDay === "none" ? "不重置" : "无有效账单日"}
                   </span>
                   <span className="traffic-reset-preview tabular" title={reset?.title}>
                     {reset?.date ?? "—"}

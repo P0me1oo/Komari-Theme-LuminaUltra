@@ -42,10 +42,11 @@ async function verify() {
   if (state.jobs.length !== 1) throw new Error("未派发探测任务");
   const command = server.commands[0];
   if (!command.includes("'-T' '-p' '80'")) throw new Error("TCP 端口参数不正确");
+  if (!command.includes("'-q' '3'")) throw new Error("逐跳采样次数不正确");
   const info = core.parseTrace(JSON.stringify({Hops: [[{Success: true, Address: {IP: "203.0.113.1"}, Geo: {asnumber: "4809"}}]]}), 0);
   if (info.networks[0].name !== "CN2" || info.route_label !== "CN2GIA") throw new Error("线路解析失败");
   const mixed = core.parseTrace(JSON.stringify({Hops: [[{Success: true, Address: {IP: "59.43.1.1"}}], [{Success: true, Address: {IP: "202.97.1.1"}, Geo: {asnumber: "4134"}}], [{Success: true, Address: {IP: "203.0.113.2"}, Geo: {asnumber: "136958"}}]]}), 0, "cu");
-  if (mixed.route_label !== "CN2GIA") throw new Error("联通目标覆盖了 CN2 路径");
+  if (mixed.route_label !== "CN2GT") throw new Error("CN2 转入 163 的路径判断失败");
   const res = {statusCode: 200, setHeader: function(){}, end: function(body){this.body = JSON.parse(body);}};
   await server.routes["GET /api/public/lumina-network/v1/results"]({context: {}}, res);
   if (res.body.available !== false) throw new Error("游客开关失效");

@@ -114,10 +114,14 @@ export interface CostPremiumEntry {
   acquiredAt?: string;
 }
 
+const BEIJING_OFFSET_MS = 8 * 60 * 60 * 1000;
+
 function localDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  // 账单日期沿用 Komari/Lite 的北京时间口径，不随浏览器所在时区漂移。
+  const beijing = new Date(date.getTime() + BEIJING_OFFSET_MS);
+  const year = beijing.getUTCFullYear();
+  const month = String(beijing.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(beijing.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -127,11 +131,11 @@ function parseLocalDateKey(value: string) {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  const parsed = new Date(year, month - 1, day);
-  return parsed.getFullYear() === year &&
-    parsed.getMonth() === month - 1 &&
-    parsed.getDate() === day
-    ? parsed.getTime()
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+    ? parsed.getTime() - BEIJING_OFFSET_MS
     : null;
 }
 
@@ -280,11 +284,33 @@ function billingCycleDays(value: unknown): number {
 }
 
 function cycleMonths(days: number) {
-  if (days === 365 || days === 360) return 12;
   if (days === 30) return 1;
-  // 整年倍数(2 年 =730、3 年 =1095…)用 /365 精确年化,而不是用 /30 兜底(那样多年周期会偏低约 1.4%)。
-  if (days > 0 && days % 365 === 0) return (days / 365) * 12;
-  if (days > 0) return days / 30;
+  // 账单周期的月数与 Lite 后端保持一致，避免 91/92 天、366 天等周期
+  // 被简单除以 30 后产生不同的月均口径。
+  switch (days) {
+    case 90:
+    case 91:
+    case 92:
+      return 3;
+    case 180:
+    case 181:
+    case 182:
+    case 183:
+    case 184:
+      return 6;
+    case 360:
+    case 365:
+    case 366:
+      return 12;
+    case 730:
+    case 731:
+      return 24;
+    case 1095:
+    case 1096:
+      return 36;
+    default:
+      if (days > 0) return Math.max(1, Math.floor((days + 15) / 30));
+  }
   return 0;
 }
 
@@ -491,8 +517,8 @@ export function calculateCostSummary(
       continue;
     }
 
-    const price = Number(node.price) || 0;
-    if (price <= 0) {
+    const price = Number(node.price);
+    if (price === -1) {
       premiumTotalCny += premium;
       premiumMonthlyTotalCny += premiumMonthly;
       premiumRemainingTotalCny += premiumRemaining;
@@ -500,6 +526,18 @@ export function calculateCostSummary(
         ...baseDetail,
         counted: false,
         note: "免费",
+      });
+      continue;
+    }
+
+    if (!Number.isFinite(price) || price <= 0) {
+      premiumTotalCny += premium;
+      premiumMonthlyTotalCny += premiumMonthly;
+      premiumRemainingTotalCny += premiumRemaining;
+      details.push({
+        ...baseDetail,
+        counted: false,
+        note: "未配置",
       });
       continue;
     }

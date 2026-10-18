@@ -107,6 +107,10 @@ export interface NodeMetrics {
   connectionsTcp: number;
   connectionsUdp: number;
   updatedAt: number;
+  trafficObservedUp?: number;
+  trafficObservedDown?: number;
+  trafficApproximate?: boolean;
+  trafficPending?: boolean;
 }
 
 export interface ThemeSettings {
@@ -169,6 +173,10 @@ export interface ThemeSettings {
   showConnections?: boolean;
   showTodayTrafficPopover?: boolean;
   trafficResetDays?: Record<string, number>;
+  trafficMode?: "agent" | "theme";
+  trafficResetDefault?: "expiry" | "none" | number;
+  trafficResetUtcOffset?: number;
+  trafficResetTz?: Record<string, number>;
   hiddenNodes?: string[];
   costIgnoredNodes?: string[];
   // 值支持旧版纯数字(自动升格)或 { amount, paidCny?, acquiredAt? } 条目,见 normalizeCostPremiums。

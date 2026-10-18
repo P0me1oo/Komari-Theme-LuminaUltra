@@ -137,15 +137,26 @@ describe("calculateCostSummary", () => {
     expect(summary.monthlyCny).toBeCloseTo(100, 6);
   });
 
-  it("counts free nodes separately and excludes them from totals", () => {
+  it("counts explicitly free nodes separately and excludes them from totals", () => {
     const summary = calculateCostSummary(
-      [node({ uuid: "free", price: 0 })],
+      [node({ uuid: "free", price: -1 })],
       [],
       RATES,
     );
     expect(noteCount(summary, "免费")).toBe(1);
     expect(paidCount(summary)).toBe(0);
     expect(summary.totalCny).toBe(0);
+  });
+
+  it("keeps an unset price separate from an explicitly free node", () => {
+    const summary = calculateCostSummary(
+      [node({ uuid: "unset", price: 0 }), node({ uuid: "free", price: -1 })],
+      [],
+      RATES,
+    );
+    expect(noteCount(summary, "未配置")).toBe(1);
+    expect(noteCount(summary, "免费")).toBe(1);
+    expect(paidCount(summary)).toBe(0);
   });
 
   it("honours the ignored-node list", () => {
@@ -183,7 +194,7 @@ describe("calculateCostSummary — acquisition premiums", () => {
   it("keeps premiums for free nodes (premium is CNY, independent of price)", () => {
     // 防回归:溢价以前只在价格/汇率校验通过后才读取,免费节点填了溢价会被静默丢掉
     const summary = calculateCostSummary(
-      [node({ uuid: "free", price: 0 })],
+      [node({ uuid: "free", price: -1 })],
       [],
       RATES,
       { free: { amount: -30 } },
@@ -313,6 +324,16 @@ describe("calculateCostSummary — annualized total & cycle validation", () => {
     expect(summary.monthlyCny).toBeCloseTo(140, 6);
     expect(summary.totalCny).toBeCloseTo(1680, 6);
     expect(summary.totalCny).toBeCloseTo(summary.monthlyCny * 12, 6);
+  });
+
+  it.each([91, 92, 181, 184, 366, 731])("uses Lite's fixed month bands for %d-day cycles", (days) => {
+    const summary = calculateCostSummary(
+      [node({ uuid: "cycle", price: 120, currency: "CNY", billing_cycle: days })],
+      [],
+      RATES,
+    );
+    const expectedMonths = days <= 92 ? 3 : days <= 184 ? 6 : days <= 366 ? 12 : 24;
+    expect(summary.monthlyCny).toBeCloseTo(120 / expectedMonths, 6);
   });
 
   it("converts via cross rates (EUR -> CNY)", () => {

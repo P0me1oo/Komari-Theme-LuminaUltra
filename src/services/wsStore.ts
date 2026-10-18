@@ -1,5 +1,6 @@
 import type { NodeInfo, NodeMetrics, NodeRealtime, TrafficTrendSample } from "@/types/komari";
 import { getNodes, getNodesLatestStatus } from "@/services/api";
+import { trafficCounterDelta } from "@/utils/trafficCycle";
 
 type Listener = () => void;
 type RealtimePayload = Record<string, unknown>;
@@ -28,6 +29,10 @@ export interface HomeNodeSummary {
   cpuPct: number;
   trafficUp: number;
   trafficDown: number;
+  trafficObservedUp?: number;
+  trafficObservedDown?: number;
+  trafficApproximate?: boolean;
+  trafficPending?: boolean;
   netUp: number;
   netDown: number;
   connectionsTcp: number;
@@ -192,6 +197,10 @@ function mergeRealtime(
     netDown: rt.network?.down ?? 0,
     trafficUp: trafficTotals.up,
     trafficDown: trafficTotals.down,
+    trafficObservedUp: metrics.trafficObservedUp == null ? 0
+      : metrics.trafficObservedUp + trafficCounterDelta(trafficTotals.up, metrics.trafficUp),
+    trafficObservedDown: metrics.trafficObservedDown == null ? 0
+      : metrics.trafficObservedDown + trafficCounterDelta(trafficTotals.down, metrics.trafficDown),
     uptime: rt.uptime ?? 0,
     load1: rt.load?.load1 ?? 0,
     load5: rt.load?.load5 ?? 0,
@@ -219,6 +228,8 @@ function shallowEqualMetrics(a: NodeMetrics, b: NodeMetrics) {
     a.netDown === b.netDown &&
     a.trafficUp === b.trafficUp &&
     a.trafficDown === b.trafficDown &&
+    a.trafficObservedUp === b.trafficObservedUp &&
+    a.trafficObservedDown === b.trafficObservedDown &&
     a.uptime === b.uptime &&
     a.load1 === b.load1 &&
     a.load5 === b.load5 &&
@@ -1084,7 +1095,7 @@ export function getHomeNodeSummariesSnapshot(): HomeNodeSummary[] {
   if (homeNodeSummariesSnapshotVersion === storeVersion) return homeNodeSummariesSnapshot;
 
   const next = state.order
-    .map((uuid) => {
+    .map((uuid): HomeNodeSummary | null => {
       const meta = state.metaByUuid[uuid];
       if (!meta) return null;
       const metrics = state.metricsByUuid[uuid];
@@ -1098,6 +1109,8 @@ export function getHomeNodeSummariesSnapshot(): HomeNodeSummary[] {
         cpuPct: metrics?.cpuPct ?? 0,
         trafficUp: metrics?.trafficUp ?? 0,
         trafficDown: metrics?.trafficDown ?? 0,
+        trafficObservedUp: metrics?.trafficObservedUp,
+        trafficObservedDown: metrics?.trafficObservedDown,
         netUp: metrics?.netUp ?? 0,
         netDown: metrics?.netDown ?? 0,
         connectionsTcp: metrics?.connectionsTcp ?? 0,
@@ -1125,6 +1138,8 @@ export function getHomeNodeSummariesSnapshot(): HomeNodeSummary[] {
         prev.cpuPct === item.cpuPct &&
         prev.trafficUp === item.trafficUp &&
         prev.trafficDown === item.trafficDown &&
+        prev.trafficObservedUp === item.trafficObservedUp &&
+        prev.trafficObservedDown === item.trafficObservedDown &&
         prev.netUp === item.netUp &&
         prev.netDown === item.netDown &&
         prev.connectionsTcp === item.connectionsTcp &&

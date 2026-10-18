@@ -21,6 +21,7 @@ import {
   type NodeOnlineSummary,
 } from "@/services/wsStore";
 import type { NodeInfo, NodeMetrics, TrafficTrendSample } from "@/types/komari";
+import { useCycleHomeSummaries, useCycleNodeMetrics } from "@/hooks/useCycleTraffic";
 
 const noopUnsubscribe = () => undefined;
 
@@ -46,7 +47,7 @@ function useNodeMetaSnapshot(uuid: string): NodeInfo | undefined {
 
 export function useNodeMetrics(uuid: string, enabled = true): NodeMetrics | undefined {
   useEnsured(enabled);
-  return useNodeMetricsSnapshot(uuid, enabled);
+  return useCycleNodeMetrics(uuid, useNodeMetricsSnapshot(uuid, enabled), enabled);
 }
 
 function useNodeMetricsSnapshot(uuid: string, enabled = true): NodeMetrics | undefined {
@@ -77,7 +78,7 @@ export function useNodeCardSnapshots(uuid: string) {
   useEnsured();
   return {
     meta: useNodeMetaSnapshot(uuid),
-    metrics: useNodeMetricsSnapshot(uuid),
+    metrics: useCycleNodeMetrics(uuid, useNodeMetricsSnapshot(uuid)),
     trafficTrend: useNodeTrafficTrendSnapshot(uuid),
   };
 }
@@ -106,11 +107,12 @@ export function useAllNodeMeta(): NodeInfo[] {
 
 export function useHomeNodeSummaries(): HomeNodeSummary[] {
   useEnsured();
-  return useSyncExternalStore(
+  const raw = useSyncExternalStore(
     subscribeHomeNodeSummaries,
     getHomeNodeSummariesSnapshot,
     getHomeNodeSummariesSnapshot,
   );
+  return useCycleHomeSummaries(raw);
 }
 
 export function useNodeOnlineSummaries(): NodeOnlineSummary[] {

@@ -145,7 +145,7 @@ export function InstanceDetails({
           <div className="instance-info-item is-stack">
             <span className="instance-info-label">总流量</span>
             <div className="instance-info-traffic">
-              <span className="instance-info-value">{`↑ ${formatTraffic(metrics.trafficUp)} · ↓ ${formatTraffic(metrics.trafficDown)}`}</span>
+              <span className="instance-info-value" title={metrics.trafficApproximate ? "历史记录不足，本周期用量为估算值" : undefined}>{`${metrics.trafficApproximate ? "≈ " : ""}↑ ${formatTraffic(metrics.trafficUp)} · ↓ ${formatTraffic(metrics.trafficDown)}`}</span>
               <div
                 className={`instance-progress-track${trafficUsage.unlimited ? " is-unlimited" : ""}`}
                 aria-hidden
@@ -158,6 +158,7 @@ export function InstanceDetails({
                 )}
               </div>
               <span className="instance-info-note">
+                {metrics.trafficApproximate ? "≈ " : ""}
                 {trafficUsage.unlimited
                   ? `${formatTraffic(trafficUsage.used)} / ∞`
                   : `${formatTraffic(trafficUsage.used)} / ${formatTraffic(trafficUsage.limit)}`}

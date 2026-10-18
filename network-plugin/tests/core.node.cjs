@@ -15,6 +15,7 @@ test("使用主页探测点的端口和 IP，检测间隔仍可设置", () => {
   assert.equal(target.host, "2001:db8::1");
   assert.match(core.traceCommand(config, target), /'-T' '-p' '443' '-6'/);
   assert.match(core.traceCommand(config, target), /^LC_ALL=C timeout -k 5s 90s /);
+  assert.match(core.traceCommand(config, target), /'-q' '3'/);
 });
 
 test("拒绝命令注入和不合法端口，旧自定义目标不再生效", () => {
@@ -26,7 +27,7 @@ test("拒绝命令注入和不合法端口，旧自定义目标不再生效", ()
   assert.throws(() => core.normalizeConfig({ interval_minutes: 0 }));
 });
 
-test("按 TQ 规则返回 CN2GIA，同时保留旧主题兼容标签", () => {
+test("按路径规则返回 CN2GIA，同时保留旧主题兼容标签", () => {
   const raw = { Hops: [[hop(1, "64500")], [hop(2, "4809")], [hop(3, "AS4134")]], StopReason: { reason: "destination_reached" } };
   const result = core.parseTrace("版本提示\n" + JSON.stringify(raw), 0, "ct");
   assert.equal(result.reached, true);
@@ -34,6 +35,59 @@ test("按 TQ 规则返回 CN2GIA，同时保留旧主题兼容标签", () => {
   assert.deepEqual(result.networks, [{ asn: "AS4809", name: "CN2" }]);
   assert.equal(result.hops[0].rtt_ms, 12);
   assert.equal(result.route_label, "CN2GIA");
+});
+
+test("多次采样按跳数取首个有效回复，相同地址在后续跳数继续保留", () => {
+  const raw = {
+    Hops: [
+      [{ Success: false, TTL: 1 }, hop(1, "10099"), hop(1, "9929", "203.0.113.9")],
+      [hop(2, "4837"), hop(2, "9929", "203.0.113.8")],
+      [{ Success: false, TTL: 3 }, { Success: false, TTL: 3 }],
+      [hop(4, "10099", "203.0.113.1")],
+    ],
+    StopReason: { reason: "destination_reached" },
+  };
+  const result = core.parseTrace(JSON.stringify(raw), 0, "cu");
+  assert.deepEqual(result.hops.map(({ ttl, ip, asn }) => ({ ttl, ip, asn })), [
+    { ttl: 1, ip: "203.0.113.1", asn: "AS10099" },
+    { ttl: 2, ip: "203.0.113.2", asn: "AS4837" },
+    { ttl: 3, ip: null, asn: null },
+    { ttl: 4, ip: "203.0.113.1", asn: "AS10099" },
+  ]);
+  assert.deepEqual(result.asns, ["AS10099", "AS4837"]);
+  assert.deepEqual(result.networks, [{ asn: "AS4837", name: "4837" }]);
+  assert.equal(result.route_label, "10099->4837");
+  assert.equal(result.route_evidence.visible_hops, 3);
+  assert.equal(result.route_evidence.hidden_hops, 1);
+  assert.equal(result.route_confidence, undefined);
+});
+
+test("读取旧缓存时路径、兼容标签与线路结论使用相同的逐跳回复", () => {
+  const config = testConfig({ guest_visible: true });
+  config.targets_by_node.get("a")[0].carrier = "cu";
+  const hops = [
+    { ttl: 1, ip: null, asn: null },
+    { ttl: 1, ip: "203.0.113.1", asn: "AS10099" },
+    { ttl: 1, ip: "203.0.113.9", asn: "AS9929" },
+    { ttl: 2, ip: "203.0.113.2", asn: "AS4837" },
+    { ttl: 3, ip: "203.0.113.1", asn: "AS10099" },
+  ];
+  const state = { jobs: [], nodes: { a: { routes: [{ key: config.targets[0].key,
+    checked_at: "2026-01-01T00:00:00Z", status: "ok", reached: true, hops,
+    networks: [{ asn: "AS9929", name: "9929" }], asns: ["AS10099", "AS9929", "AS4837"], route_confidence: 0.96,
+  }] } } };
+  const original = JSON.stringify(state);
+  const read = (admin) => core.visibleData([{ uuid: "a" }], state, config, admin, Date.now()).nodes[0].routes[0];
+  const admin = read(true);
+  assert.deepEqual(admin.hops.map((hop) => hop.ttl), [1, 2, 3]);
+  assert.equal(admin.hops[2].ip, admin.hops[0].ip);
+  assert.deepEqual(admin.asns, ["AS10099", "AS4837"]);
+  assert.deepEqual(admin.networks, [{ asn: "AS4837", name: "4837" }]);
+  assert.equal(admin.route_label, "10099->4837");
+  assert.equal(admin.confidence, undefined);
+  assert.equal(read(false).route_label, admin.route_label);
+  assert.equal(read(false).hops, undefined);
+  assert.equal(JSON.stringify(state), original);
 });
 
 test("旧主题兼容标签继续保留原有选择方式", () => {

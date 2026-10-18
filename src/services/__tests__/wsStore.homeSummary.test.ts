@@ -18,6 +18,36 @@ afterEach(async () => {
 });
 
 describe("首页实时负载摘要", () => {
+  it("连续重启时保留每次上报的增量，首页与卡片使用相同基准", async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    vi.stubGlobal("window", {
+      setTimeout: globalThis.setTimeout,
+      clearTimeout: globalThis.clearTimeout,
+      setInterval: globalThis.setInterval,
+      clearInterval: globalThis.clearInterval,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+    api.getNodes.mockResolvedValue([NodeInfoSchema.parse({ uuid: "node-a" })]);
+    let up = 100;
+    api.getNodesLatestStatus.mockImplementation(async () => ({
+      "node-a": { online: true, net_total_up: up, net_total_down: up * 2 },
+    }));
+    const store = await import("@/services/wsStore");
+    release = store.retainStore();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.getNodeMetricsSnapshot("node-a")).toMatchObject({ trafficObservedUp: 0, trafficObservedDown: 0 });
+    for (const [counter, observed] of [[120, 20], [10, 30], [25, 45], [5, 50], [15, 60]]) {
+      up = counter;
+      await vi.advanceTimersByTimeAsync(2_000);
+      const expected = { trafficUp: counter, trafficDown: counter * 2,
+        trafficObservedUp: observed, trafficObservedDown: observed * 2 };
+      expect(store.getNodeMetricsSnapshot("node-a")).toMatchObject(expected);
+      expect(store.getHomeNodeSummariesSnapshot()[0]).toMatchObject(expected);
+    }
+  });
+
   it("只有连接数变化时也刷新摘要，并支持归零和未上报的数据", async () => {
     vi.resetModules();
     vi.useFakeTimers();

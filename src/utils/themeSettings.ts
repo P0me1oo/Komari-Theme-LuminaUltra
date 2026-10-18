@@ -1,5 +1,6 @@
 import type { ThemeSettings } from "@/types/komari";
-import { normalizeTrafficResetDays } from "@/utils/trafficReset";
+import { normalizeTrafficResetDays, normalizeTrafficResetDefault, normalizeTrafficResetTimezones,
+  normalizeTrafficUtcOffset, type TrafficResetDefault } from "@/utils/trafficReset";
 import {
   normalizeCapacityUnit,
   normalizeNetworkRateUnit,
@@ -126,6 +127,10 @@ export interface ResolvedThemeSettings {
   showConnections: boolean;
   showTodayTrafficPopover: boolean;
   trafficResetDays: Record<string, number>;
+  trafficMode: "agent" | "theme";
+  trafficResetDefault: TrafficResetDefault;
+  trafficResetUtcOffset: number;
+  trafficResetTz: Record<string, number>;
   hiddenNodes: string[];
   costIgnoredNodes: string[];
   costPremiums: Record<string, CostPremiumEntry>;
@@ -195,6 +200,10 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   showConnections: false,
   showTodayTrafficPopover: true,
   trafficResetDays: {},
+  trafficMode: "agent",
+  trafficResetDefault: "expiry",
+  trafficResetUtcOffset: 8,
+  trafficResetTz: {},
   hiddenNodes: [],
   costIgnoredNodes: [],
   costPremiums: {},
@@ -418,6 +427,10 @@ export function normalizeThemeSettings(
     showConnections: settings?.showConnections === true,
     showTodayTrafficPopover: enabledUnlessFalse(settings?.showTodayTrafficPopover),
     trafficResetDays: normalizeTrafficResetDays(settings?.trafficResetDays),
+    trafficMode: settings?.trafficMode === "theme" ? "theme" : "agent",
+    trafficResetDefault: normalizeTrafficResetDefault(settings?.trafficResetDefault),
+    trafficResetUtcOffset: normalizeTrafficUtcOffset(settings?.trafficResetUtcOffset),
+    trafficResetTz: normalizeTrafficResetTimezones(settings?.trafficResetTz),
     hiddenNodes: normalizeNodeIdentityList(settings?.hiddenNodes),
     costIgnoredNodes: normalizeCostIgnoredNodes(settings?.costIgnoredNodes),
     costPremiums: normalizeCostPremiums(settings?.costPremiums),

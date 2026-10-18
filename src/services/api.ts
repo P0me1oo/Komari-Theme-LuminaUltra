@@ -19,6 +19,7 @@ import {
 } from "@/types/komari";
 import { fetchWithTimeout, withTimeoutSignal } from "@/utils/abort";
 import { inferHistoryIntervalSeconds } from "@/utils/historyRange";
+import { summarizeCycleTrafficMetrics, summarizeCycleTrafficRecords, type CycleTrafficUsage } from "@/utils/trafficCycle";
 import {
   LOAD_LAST_AGGREGATION,
   LOAD_METRIC_KEYS,
@@ -957,6 +958,45 @@ export interface TodayTrafficMetricResponse {
   rangeStartMs: number;
   rangeEndMs: number;
   intervalSeconds?: number;
+}
+
+/** 只请求流量增量，保留周期边界；旧版读取全部网络计数，避免抽样漏掉重启。 */
+export async function getCycleTrafficUsage(
+  uuid: string, start: number, end: number, options?: ApiCallOptions,
+): Promise<CycleTrafficUsage> {
+  if (start === end) return { up: 0, down: 0, approximate: false, hasSamples: true };
+  return withTimeoutSignal(async (signal) => {
+    try {
+      const payload = await queryMetricPayload({
+        start: new Date(start).toISOString(), end: new Date(end).toISOString(),
+        entity_ids: [uuid], metric_keys: [TRAFFIC_UP_METRIC, TRAFFIC_DOWN_METRIC],
+        max_points: Math.max(1, Math.ceil((end - start) / 900_000)), aggregation: "sum", fill_empty: false,
+      }, signal, options?.timeout ?? 12_000);
+      const series = payload.series.map((item) => ({
+        client: item.entity_id, metricKey: item.metric_key, intervalSeconds: item.interval_seconds, points: item.points,
+      }));
+      return summarizeCycleTrafficMetrics(series, uuid, start, end);
+    } catch {
+      signal.throwIfAborted();
+      const hours = Math.max(1, Math.ceil((end - start) / 3_600_000) + 1);
+      const payload = await rpcCall("common:getRecords", {
+        uuid, type: "load", load_type: "network", hours, maxCount: -1,
+        start: new Date(start - 3_600_000).toISOString(), end: new Date(end).toISOString(),
+      }, RpcRecordsSchema, { signal, timeout: options?.timeout ?? 12_000 }).catch(async () => {
+        signal.throwIfAborted();
+        const httpHours = Math.max(hours, Math.ceil((Date.now() - start) / 3_600_000) + 1);
+        return apiGet(`/api/records/load?${new URLSearchParams({ uuid, hours: String(httpHours), load_type: "network" })}`,
+          RpcRecordsSchema, { signal });
+      });
+      const schema = z.object({ time: z.union([z.string(), z.number()]),
+        net_total_up: z.number().nonnegative(), net_total_down: z.number().nonnegative() });
+      const samples = parseArrayLenient(schema, extractRpcRecords(payload, uuid)).map((record) => ({
+        time: typeof record.time === "number" ? record.time > 1_000_000_000_000 ? record.time : record.time * 1000 : Date.parse(record.time),
+        up: record.net_total_up, down: record.net_total_down,
+      }));
+      return summarizeCycleTrafficRecords(samples, start, end);
+    }
+  }, options?.timeout ?? 12_000, options?.signal);
 }
 
 let recentStatusApiAvailable = true;

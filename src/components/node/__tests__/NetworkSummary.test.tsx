@@ -151,6 +151,23 @@ it("首页回程区域只显示线路，IP 标签显示在 V4 后面", () => {
   expect(html.indexOf('data-ip-label="type"')).toBeLessThan(html.indexOf('aria-label="三网回程"'));
 });
 
+it("首页与详情均不显示旧插件的置信度，详情继续显示路径证据", () => {
+  const route = {
+    confidence: 0.96,
+    matched_asns: ["AS4809"],
+    matched_prefixes: ["59.43.0.0/16"],
+    rule_version: "2026.10.18.1",
+  } satisfies Partial<NetworkRoute>;
+  const home = render(NetworkSummary, {}, route);
+  const details = render(NetworkPanel, {}, route);
+  expect(home).not.toContain("识别置信度");
+  expect(home).not.toContain("59.43.0.0/16");
+  expect(details).not.toContain("识别置信度");
+  expect(details).not.toContain("96%");
+  expect(details).toContain("ASN 证据 AS4809");
+  expect(details).toContain("规则 2026.10.18.1");
+});
+
 it("双栈属性相同时共用标签，V4/V6 并排显示", () => {
   const sample = data();
   sample.nodes[0].ips.push({ ...sample.nodes[0].ips[0], family: 6 });
@@ -186,10 +203,53 @@ it("详情的 IP 信息与回程是两个区域，错误分别显示", () => {
   expect(html.indexOf("回程设置错误")).toBeGreaterThan(html.indexOf('instance-panel-title">三网回程</h2>'));
 });
 
-it("路径详情保留企业和地区，不受节点 ASN 标签影响", () => {
-  const html = render(NetworkPanel);
+it("路径详情显示每一跳的 AS 号并保留企业和地区，不受节点 ASN 标签开关影响", () => {
+  const html = render(NetworkPanel, {}, {}, { show_asn: false });
   expect(html).toContain("企业 / 地区");
   expect(html).toContain("测试骨干网 · 广东");
-  expect(html).not.toContain("<th>ASN</th>");
-  expect(html).not.toContain("AS4809");
+  expect(html).toContain("<th>AS 号</th>");
+  expect(html).toContain("<td>AS4809</td>");
+  expect(html).not.toContain("AS64500");
+});
+
+function unansweredHop(ttl: number): NonNullable<NetworkRoute["hops"]>[number] {
+  return { ttl, ip: null, asn: null, owner: "", location: "", rtt_ms: null };
+}
+
+it("路径表格合并首尾连续未响应跳点，保留中间有响应但缺少 AS 号的跳点", () => {
+  const hops = [
+    unansweredHop(1), unansweredHop(2),
+    { ...unansweredHop(3), ip: "203.0.113.3", owner: "测试网络", rtt_ms: 0 },
+    unansweredHop(4), unansweredHop(5), unansweredHop(6),
+  ];
+  const original = structuredClone(hops);
+  const html = render(NetworkPanel, {}, { hops });
+  const rows = html.match(/<tbody>(.*?)<\/tbody>/)?.[1];
+  expect(rows).toBe(
+    '<tr><td>1–2</td><td colSpan="4">连续 2 跳未响应</td></tr>' +
+    '<tr><td>3</td><td>203.0.113.3</td><td>—</td><td>测试网络</td><td>0.0 ms</td></tr>' +
+    '<tr><td>4–6</td><td colSpan="4">连续 3 跳未响应</td></tr>',
+  );
+  expect(hops).toEqual(original);
+});
+
+it("全部未响应时只保留一行，跳数按实际范围显示", () => {
+  const html = render(NetworkPanel, {}, { hops: [5, 6, 7, 8, 9].map(unansweredHop) });
+  expect(html.match(/<tbody>(.*?)<\/tbody>/)?.[1]).toBe(
+    '<tr><td>5–9</td><td colSpan="4">连续 5 跳未响应</td></tr>',
+  );
+});
+
+it("未响应记录不跨跳号缺口、重复跳号或倒序跳号合并", () => {
+  const html = render(NetworkPanel, {}, { hops: [2, 4, 4, 3].map(unansweredHop) });
+  const rows = html.match(/<tbody>(.*?)<\/tbody>/)?.[1];
+  expect(rows?.match(/<tr>/g)).toHaveLength(4);
+  expect(rows?.match(/<td>未响应<\/td>/g)).toHaveLength(4);
+  expect(rows).not.toContain("colSpan");
+});
+
+it.each([undefined, []])("没有跳点数据时不显示路径表格：%s", (hops) => {
+  const html = render(NetworkPanel, {}, { hops });
+  expect(html).not.toContain("查看具体路径");
+  expect(html).not.toContain("<table>");
 });

@@ -19,6 +19,12 @@ const RouteSchema = z.object({
   route_label: z.string().nullable().optional(),
   networks: z.array(NetworkSchema), asns: z.array(z.string()), reached: z.boolean().nullable(),
   error: z.string().nullable(), running: z.boolean(), stale: z.boolean(), hops: z.array(HopSchema).optional(),
+  // 仅管理员详情接口返回，主页标签不读取这些字段。
+  // 兼容旧插件返回的评分，页面不展示。
+  confidence: z.number().min(0).max(1).nullable().optional(),
+  matched_asns: z.array(z.string()).optional(), matched_prefixes: z.array(z.string()).optional(),
+  visible_hops: z.number().int().nonnegative().optional(), hidden_hops: z.number().int().nonnegative().optional(),
+  rule_version: z.string().optional(),
 });
 export const NetworkResultsSchema = z.object({
   available: z.boolean(), show_home: z.boolean().optional(), show_details: z.boolean().optional(),

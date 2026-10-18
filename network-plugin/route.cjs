@@ -1,6 +1,9 @@
 "use strict";
 
-// 三网主规则参考 TcpQuality c2295ae；探测和 ASN 查询仍由现有 NextTrace 完成。
+const { isIP } = require("node:net");
+
+// 三网主规则参考 TcpQuality c2295ae；逐跳取样与 CN2 转接判断参考 NetQuality d5b9948。
+const ROUTE_RULE_VERSION = "2026.10.18.1";
 const CT_ACCESS = new Set(["4134", "4811", "4812", "4847", "23724", "134756", "133776", "139201", "139203", "148969", "38283", "58540", "58563"]);
 const CU_BACKBONE = new Set(["9929", "4837", "4808"]);
 const CU_ACCESS = new Set(["17816", "135061", "136958", "140979"]);
@@ -57,18 +60,25 @@ function inferASN(ip) {
   return "";
 }
 
+function selectHopReplies(hops) {
+  const selected = new Map();
+  (Array.isArray(hops) ? hops : []).slice(0, 320).forEach((hop, index) => {
+    if (!hop) return;
+    const value = Number(hop.ttl);
+    const ttl = Number.isInteger(value) && value > 0 ? value : index + 1;
+    const previous = selected.get(ttl);
+    // 同一跳只取首个有效回复；全未响应时保留占位。不同跳数不按地址合并。
+    if (previous && (isIP(String(previous.ip || "")) || !isIP(String(hop.ip || "")))) return;
+    selected.set(ttl, { ...hop, ttl });
+  });
+  return [...selected.values()].sort((a, b) => a.ttl - b.ttl);
+}
+
 function routeHops(hops) {
-  const unique = new Map();
-  const ordered = (Array.isArray(hops) ? hops : []).filter(Boolean).slice(0, 320)
-    .sort((a, b) => (Number(a.ttl) || 0) - (Number(b.ttl) || 0));
-  for (const hop of ordered) {
+  return selectHopReplies(hops).map((hop) => {
     const ip = publicIP(hop.ip);
-    if (!ip) continue;
-    const asn = asnNumber(hop.asn);
-    if (!unique.has(ip)) unique.set(ip, { ip, asn });
-    else if (asn) unique.get(ip).asn = asn;
-  }
-  return [...unique.values()].map((hop) => ({ ...hop, asn: hop.asn || inferASN(hop.ip) }));
+    return { ttl: hop.ttl, ip, asn: asnNumber(hop.asn) || inferASN(ip) };
+  }).filter((hop) => hop.ip);
 }
 
 function telecom(hop) { return hop.asn === "4134" || hop.asn === "4847" || CT_IP.test(hop.ip); }
@@ -76,6 +86,7 @@ function telecomAccess(hop) { return CT_ACCESS.has(hop.asn) || CT_ACCESS_IP.test
 function unicom(hop) { return CU_BACKBONE.has(hop.asn) || CU_ACCESS.has(hop.asn) || CU_PREMIUM_IP.test(hop.ip) || CU_IP.test(hop.ip); }
 function unicomIntl(hop) { return hop.asn === "10099" || (!hop.asn && CU_INTL_IP.test(hop.ip)); }
 function ctg(hop) { return hop.asn === "23764" || CTG_IP.test(hop.ip); }
+function cn2(hop) { return CN2_IP.test(hop.ip) || (hop.asn === "4809" && !/^2605:9d80:/.test(hop.ip)); }
 function cmi(hop) { return hop.asn === "58453" || hop.asn === "9808" || /^5604[0-8]$/.test(hop.asn); }
 function mobileAccess(hop) { return CM_ACCESS.has(hop.asn) || CM_ACCESS_IP.test(hop.ip); }
 
@@ -103,10 +114,18 @@ function unicomRoute(hops, carrier) {
 }
 
 function cn2To163(hops, first, carrier) {
+  let featureExit = false;
   for (let i = first; i < hops.length; i++) {
-    if (!/^59\.43\.245\./.test(hops[i].ip)) continue;
-    const next = hops.slice(i + 1).find((hop) => !CN2_IP.test(hop.ip));
-    if (next) return telecom(next) || (carrier === "ct" && telecomAccess(next));
+    const hop = hops[i];
+    if (cn2(hop)) {
+      if (/^59\.43\.245\./.test(hop.ip)) featureExit = true;
+      continue;
+    }
+    if (ctg(hop)) continue;
+    // NetQuality 检查精品骨干后的首个其他网络，不要求固定的 59.43.245 出口。
+    // 保留原有特征出口接普通电信 / 地方电信的兼容判断。
+    return /^202\.97\./.test(hop.ip) ||
+      (featureExit && (telecom(hop) || (carrier === "ct" && telecomAccess(hop))));
   }
   return false;
 }
@@ -136,10 +155,11 @@ function mainlandLabel(hops, index, carrier) {
   return EDUCATION[hop.asn] || null;
 }
 
-function classifyRoute(rawHops, carrier) {
-  const hops = routeHops(rawHops);
+function classifyNormalizedRoute(hops, carrier) {
   const firstCN2 = hops.findIndex((hop) => CN2_IP.test(hop.ip));
   const hasCTG = hops.some(ctg);
+  const firstPremium = hops.findIndex((hop) => cn2(hop) || ctg(hop));
+  if (firstPremium >= 0 && cn2To163(hops, firstPremium, carrier)) return "CN2GT";
   // 先判断整条路径中的 CN2 特征，避免被目标运营商或末端 163 覆盖。
   if (firstCN2 >= 0) {
     if (cn2To163(hops, firstCN2, carrier)) return "CN2GT";
@@ -166,4 +186,49 @@ function classifyRoute(rawHops, carrier) {
   return null;
 }
 
-module.exports = { classifyRoute };
+function matchedPrefix(ip) {
+  const ipv4Prefix = (bits) => ip.split(".").slice(0, bits / 8)
+    .concat(Array(4 - bits / 8).fill("0")).join(".") + "/" + bits;
+  if (CN2_IP.test(ip)) return "59.43.0.0/16";
+  if (CTG_IP.test(ip)) return ip.includes(":") ? "2400:9380::/32" : ipv4Prefix(ip.startsWith("69.194.") ? 16 : 24);
+  if (CU_PREMIUM_IP.test(ip)) return ip.includes(":") ? "2408:8120::/32" : ipv4Prefix(16);
+  if (CU_INTL_IP.test(ip)) {
+    if (ip.includes(":")) return "2401:8a00::/32";
+    if (/^162\.219\.3[2-9]\./.test(ip)) return "162.219.32.0/21";
+    return ipv4Prefix(ip.startsWith("103.214.") ? 16 : 24);
+  }
+  return CMIN2_IP.test(ip) ? "2402:4f00:f000::/48" : null;
+}
+
+function routeEvidence(rawHops, hops, label) {
+  const knownASNs = new Set();
+  const prefixes = new Set();
+  for (const hop of hops) {
+    if (hop.asn) knownASNs.add("AS" + hop.asn);
+    const prefix = matchedPrefix(hop.ip);
+    if (prefix) prefixes.add(prefix);
+  }
+  const hiddenHops = selectHopReplies(rawHops).filter((hop) => !publicIP(hop.ip)).length;
+  const visibleHops = hops.length;
+  return {
+    route_label: label,
+    evidence: {
+      asns: [...knownASNs],
+      prefixes: [...prefixes],
+      visible_hops: visibleHops,
+      hidden_hops: hiddenHops,
+    },
+    rule_version: ROUTE_RULE_VERSION,
+  };
+}
+
+function classifyRoute(rawHops, carrier) {
+  return classifyNormalizedRoute(routeHops(rawHops), carrier);
+}
+
+function classifyRouteDetailed(rawHops, carrier) {
+  const hops = routeHops(rawHops);
+  return routeEvidence(rawHops, hops, classifyNormalizedRoute(hops, carrier));
+}
+
+module.exports = { classifyRoute, classifyRouteDetailed, selectHopReplies, inferASN, ROUTE_RULE_VERSION };

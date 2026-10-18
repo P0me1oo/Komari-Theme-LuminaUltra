@@ -78,6 +78,7 @@ interface HomeOverview {
   offlineNodes: number;
   trafficUp: number;
   trafficDown: number;
+  trafficApproximate?: boolean;
   netUp: number;
   netDown: number;
   connectionsTcp: number;
@@ -170,10 +171,11 @@ function HomeOverviewCards({
   onWarmTraffic: () => void;
 }) {
   const { formatMemory, formatDisk, formatTraffic, formatSpeed, formatSpeedLabel } = useDisplayUnits();
-  const { assetCurrency, trafficUnit: preferredTrafficUnit, networkUnit } = useThemeSettings();
-  const [trafficValue, trafficUnit] = formatTraffic(
+  const { assetCurrency, trafficUnit: preferredTrafficUnit, networkUnit, trafficMode } = useThemeSettings();
+  const [rawTrafficValue, trafficUnit] = formatTraffic(
     overview.trafficUp + overview.trafficDown,
   ).split(" ");
+  const trafficValue = `${overview.trafficApproximate ? "≈" : ""}${rawTrafficValue}`;
   const rate = formatSpeed(overview.netUp + overview.netDown);
   const onlinePct =
     overview.totalNodes > 0 ? (overview.onlineNodes / overview.totalNodes) * 100 : 0;
@@ -297,7 +299,7 @@ function HomeOverviewCards({
 
       {showOverviewTraffic && <article className="overview-card" data-metric="traffic">
         <div className="overview-card-head">
-          <span className="overview-card-label">累计流量</span>
+          <span className="overview-card-label" title={overview.trafficApproximate ? "历史记录不足，流量为估算值" : undefined}>{trafficMode === "theme" ? "本周期流量" : "累计流量"}</span>
           <Link
             to="/traffic"
             className="overview-card-action"
@@ -492,6 +494,7 @@ export function NodeGrid() {
     let offlineNodes = 0;
     let trafficUp = 0;
     let trafficDown = 0;
+    let trafficApproximate = false;
     let netUp = 0;
     let netDown = 0;
     let connectionsTcp = 0;
@@ -505,6 +508,7 @@ export function NodeGrid() {
       else if (node.online === false) offlineNodes += 1;
       trafficUp += node.trafficUp;
       trafficDown += node.trafficDown;
+      trafficApproximate ||= node.trafficApproximate === true;
       netUp += node.netUp;
       netDown += node.netDown;
       // 离线或状态未知的节点保留旧读数，但不计入当前连接数。
@@ -524,6 +528,7 @@ export function NodeGrid() {
       offlineNodes,
       trafficUp,
       trafficDown,
+      trafficApproximate,
       netUp,
       netDown,
       connectionsTcp,

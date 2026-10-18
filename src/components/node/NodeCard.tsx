@@ -324,7 +324,7 @@ function NodeTrafficSection({
         totalLabel="出站"
         rate={upRate}
         bytesPerSec={node.netUp}
-        total={formatTraffic(node.trafficUp)}
+        total={`${node.trafficApproximate ? "≈" : ""}${formatTraffic(node.trafficUp)}`}
         samples={trafficTrend.up}
         live={isOnline}
         active={node.netUp > 0}
@@ -337,7 +337,7 @@ function NodeTrafficSection({
         totalLabel="入站"
         rate={downRate}
         bytesPerSec={node.netDown}
-        total={formatTraffic(node.trafficDown)}
+        total={`${node.trafficApproximate ? "≈" : ""}${formatTraffic(node.trafficDown)}`}
         samples={trafficTrend.down}
         live={isOnline}
         active={node.netDown > 0}

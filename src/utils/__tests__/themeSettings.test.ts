@@ -9,6 +9,13 @@ import {
 import { DEFAULT_BACKGROUND_VIDEO_URL } from "@/utils/background";
 
 describe("normalizeThemeSettings", () => {
+  it("兼容旧模式并保存独立周期规则", () => {
+    expect(normalizeThemeSettings({})).toMatchObject({ trafficMode: "agent", trafficResetDefault: "expiry", trafficResetUtcOffset: 8, trafficResetTz: {} });
+    expect(normalizeThemeSettings({ trafficMode: "theme", trafficResetDefault: 15, trafficResetUtcOffset: -5,
+      trafficResetDays: { node: -1 }, trafficResetTz: { another: 5.5 } })).toMatchObject({
+      trafficMode: "theme", trafficResetDefault: 15, trafficResetUtcOffset: -5, trafficResetDays: { node: -1 }, trafficResetTz: { another: 5.5 },
+    });
+  });
   it("旧设置保留自动单位和人民币，新单位可以分别保存", () => {
     const defaults = {
       networkUnit: "auto", memoryUnit: "auto", trafficUnit: "auto",

@@ -1,6 +1,6 @@
 "use strict";
 
-const { classifyRoute } = require("./route.cjs");
+const { classifyRouteDetailed, selectHopReplies, inferASN, ROUTE_RULE_VERSION } = require("./route.cjs");
 const ipSource = require("./ip.cjs");
 const NETWORKS = {
   AS4809: "CN2", AS4134: "163", AS4847: "163", AS9929: "9929", AS10099: "10099",
@@ -66,7 +66,7 @@ function traceCommand(config, target) {
   const args = [config.nexttrace_path, "-j"];
   if (target.protocol !== "icmp") args.push("-T", "-p", target.port);
   if (target.family === 4 || target.family === 6) args.push("-" + target.family);
-  args.push("-q", 1, "-m", 30, "-n", "-M", target.host);
+  args.push("-q", 3, "-m", 30, "-n", "-M", target.host);
   return "LC_ALL=C timeout -k 5s 90s " + args.map(shellQuote).join(" ");
 }
 
@@ -109,14 +109,8 @@ function networkForHop(hop) {
   if (asn) return NETWORKS[asn] ? { asn, name: NETWORKS[asn] } : null;
   const ip = String(hop.ip || "").toLowerCase();
   // 旧主题兼容标签使用原有前缀兜底；新主题读取独立的最终线路结论。
-  const inferred = /^59\.43\./.test(ip) ? "AS4809"
-    : /^(?:202\.(?:96|97)\.|219\.14[12]\.|106\.37\.|240e:)/.test(ip) ? "AS4134"
-      : /^(?:210\.(?:14|51|78)\.|218\.105\.|2408:8120:)/.test(ip) ? "AS9929"
-        : /^(?:219\.158\.|2408:)/.test(ip) ? "AS4837"
-          : /^(?:223\.(?:119|120)\.)/.test(ip) ? "AS58453"
-            : /^(?:221\.183\.|111\.(?:24|13)\.|2409:8080:)/.test(ip) ? "AS9808"
-              : /^2402:4f00:f000:/.test(ip) ? "AS58807" : null;
-  return inferred ? { asn: inferred, name: NETWORKS[inferred] } : null;
+  const inferred = "AS" + inferASN(ip);
+  return NETWORKS[inferred] ? { asn: inferred, name: NETWORKS[inferred] } : null;
 }
 
 // 仅供旧主题兼容；新版主题使用 classifyRoute 给出的 route_label。
@@ -141,7 +135,7 @@ function primaryNetwork(hops, carrier, savedNetworks) {
 function parseTrace(output, exitCode, carrier) {
   const parsed = traceJSON(output);
   const buckets = parsed.Hops || parsed.hops;
-  const hops = [];
+  const rawHops = [];
   buckets.slice(0, 64).forEach((bucket, index) => {
     const attempts = Array.isArray(bucket) ? bucket : bucket ? bucket.attempts || [bucket] : [];
     if (!attempts.length) attempts.push({ Success: false, TTL: index + 1 });
@@ -151,7 +145,7 @@ function parseTrace(output, exitCode, carrier) {
       const address = attempt.Address || attempt.address;
       const ip = typeof address === "string" ? address : address && address.IP || attempt.ip || null;
       const responded = attempt.Success === true || attempt.success === true;
-      hops.push({
+      rawHops.push({
         ttl: Number(attempt.TTL || (bucket && bucket.ttl) || index + 1),
         ip: responded ? ip : null,
         asn: responded ? normalizeASN(geo.asnumber || attempt.asn) : null,
@@ -161,12 +155,18 @@ function parseTrace(output, exitCode, carrier) {
       });
     });
   });
+  const hops = selectHopReplies(rawHops);
   const asns = [...new Set(hops.map((hop) => hop.asn).filter(Boolean))];
   const networks = primaryNetwork(hops, carrier);
+  const route = classifyRouteDetailed(hops, carrier);
   const reason = (parsed.StopReason || parsed.stop_reason || {}).reason;
   const reached = reason === "destination_reached" ? true : reason ? false : null;
   const complete = exitCode === 0 && reached === true;
-  return { hops, asns, networks, route_label: classifyRoute(hops, carrier), reached, status: complete ? "ok" : "partial" };
+  return {
+    hops, asns, networks, route_label: route.route_label,
+    route_evidence: route.evidence, route_rule_version: route.rule_version || ROUTE_RULE_VERSION,
+    reached, status: complete ? "ok" : "partial",
+  };
 }
 
 function selectedNodes(nodes, config) {
@@ -204,17 +204,29 @@ function visibleData(nodes, state, config, admin, now) {
         routes: (routeVisible && selected.has(node.uuid) ? targetsForNode(config, node.uuid) : []).map((target) => {
           const route = (saved.routes || []).find((item) => item.key === target.key && targets.has(item.key));
           const running = state.jobs.some((job) => job.uuid === node.uuid && job.target.key === target.key);
+          const hops = route && Array.isArray(route.hops) ? selectHopReplies(route.hops) : null;
+          const routeDetail = hops
+            ? classifyRouteDetailed(hops, target.carrier)
+            : null;
           return {
             region: target.region, carrier: target.carrier, family: target.family, address: target.address,
             task_id: target.task_id, task_name: target.task_name,
             status: target.error ? "error" : route ? (route.status === "partial" && route.reached === true && !route.error ? "ok" : route.status) : "pending",
             checked_at: route ? route.checked_at || null : null,
             // 有跳点的旧缓存直接按新规则重算，不改检测时间，也不派发新任务。
-            route_label: route ? (Array.isArray(route.hops) ? classifyRoute(route.hops, target.carrier) : undefined) : null,
-            networks: route ? primaryNetwork(route.hops, target.carrier, route.networks) : [], asns: route ? route.asns : [],
+            route_label: route ? (routeDetail ? routeDetail.route_label : undefined) : null,
+            networks: route ? primaryNetwork(hops, target.carrier, route.networks) : [],
+            asns: route ? (hops ? [...new Set(hops.map((hop) => normalizeASN(hop.asn)).filter(Boolean))] : route.asns || []) : [],
             reached: route ? route.reached : null, error: target.error || (route ? route.error || null : null),
             running, stale: route ? now - Date.parse(route.checked_at) > config.interval_minutes * 60000 : false,
-            ...(admin ? { hops: route ? route.hops : [] } : {}),
+            ...(admin ? {
+              hops: hops || [],
+              matched_asns: routeDetail ? routeDetail.evidence.asns : [],
+              matched_prefixes: routeDetail ? routeDetail.evidence.prefixes : [],
+              visible_hops: routeDetail?.evidence.visible_hops ?? 0,
+              hidden_hops: routeDetail?.evidence.hidden_hops ?? 0,
+              rule_version: routeDetail?.rule_version || route?.route_rule_version || ROUTE_RULE_VERSION,
+            } : {}),
           };
         }),
       };

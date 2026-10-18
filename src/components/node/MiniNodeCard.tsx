@@ -257,12 +257,12 @@ function MiniFlow({
       <div className="mini-node-flow-group" aria-label="累计流量">
         <MiniFlowRow
           icon={<ArrowUp size={12} strokeWidth={2.2} />}
-          value={formatTraffic(node.trafficUp)}
+          value={`${node.trafficApproximate ? "≈" : ""}${formatTraffic(node.trafficUp)}`}
           title="累计上行"
         />
         <MiniFlowRow
           icon={<ArrowDown size={12} strokeWidth={2.2} />}
-          value={formatTraffic(node.trafficDown)}
+          value={`${node.trafficApproximate ? "≈" : ""}${formatTraffic(node.trafficDown)}`}
           title="累计下行"
         />
       </div>

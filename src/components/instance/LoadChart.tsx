@@ -652,8 +652,8 @@ export function LoadChart({
           }
           note={
             <span className="instance-overview-multi">
-              <span className="inline-flex items-center gap-1"><ArrowDown size={11} />{isRealtime && node ? formatTraffic(node.trafficDown) : latestHistoryRecord ? formatTraffic(latestHistoryRecord.net_total_down ?? 0) : "—"}</span>
-              <span className="inline-flex items-center gap-1"><ArrowUp size={11} />{isRealtime && node ? formatTraffic(node.trafficUp) : latestHistoryRecord ? formatTraffic(latestHistoryRecord.net_total_up ?? 0) : "—"}</span>
+              <span className="inline-flex items-center gap-1"><ArrowDown size={11} />{isRealtime && node ? `${node.trafficApproximate ? "≈" : ""}${formatTraffic(node.trafficDown)}` : latestHistoryRecord ? formatTraffic(latestHistoryRecord.net_total_down ?? 0) : "—"}</span>
+              <span className="inline-flex items-center gap-1"><ArrowUp size={11} />{isRealtime && node ? `${node.trafficApproximate ? "≈" : ""}${formatTraffic(node.trafficUp)}` : latestHistoryRecord ? formatTraffic(latestHistoryRecord.net_total_up ?? 0) : "—"}</span>
             </span>
           }
           points={points}

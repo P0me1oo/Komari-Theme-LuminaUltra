@@ -1,7 +1,14 @@
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { routeLabel, routeName, type NetworkRoute } from "@/services/networkInfo";
+import { NetworkRouteSegments } from "@/components/ui/NetworkRouteSegments";
 
 type NetworkHop = NonNullable<NetworkRoute["hops"]>[number];
+
+const hopNetworks: Record<string, string> = {
+  AS4809: "CN2", AS4134: "电信163", AS4847: "电信163", AS23764: "电信国际",
+  AS9929: "9929", AS10099: "10099", AS4837: "4837", AS4808: "4837",
+  AS58807: "CMIN2", AS58453: "CMI", AS9808: "移动骨干",
+};
 
 function pathRows(hops: NetworkHop[]) {
   const rows: { hop: NetworkHop; endTtl: number }[] = [];
@@ -24,7 +31,6 @@ function checkedTime(value: string | null) {
 export function NetworkRouteRow({ route }: { route: NetworkRoute }) {
   const name = routeName(route);
   const label = routeLabel(route);
-  const segments = label.split(/\s*->\s*/).filter(Boolean);
   const hasHops = Boolean(route.hops?.length);
   const locations = (route.hops ?? []).reduce<string[]>((path, hop) => {
     const location = hop.location.trim();
@@ -55,12 +61,7 @@ export function NetworkRouteRow({ route }: { route: NetworkRoute }) {
       </div>
       <div className="network-route-result">
         <span className="network-route-label" data-state={state}>
-          {segments.map((segment, index) => (
-            <span className="network-route-segment" key={index}>
-              {index > 0 && <ArrowRight size={13} aria-label="转接至" />}
-              <strong>{segment}</strong>
-            </span>
-          ))}
+          <NetworkRouteSegments label={label} />
         </span>
         {warning && route.status !== "error" && <span className="network-route-warning">{route.reached === false ? "未到达目标" : "路径不完整"}</span>}
       </div>
@@ -93,7 +94,10 @@ export function NetworkRouteRow({ route }: { route: NetworkRoute }) {
                       <td>{hop.ttl}</td>
                       <td>{hop.rtt_ms == null ? "—" : <>{hop.rtt_ms.toFixed(1)} <span className="network-hop-unit">ms</span></>}</td>
                       <td>{hop.ip || "未响应"}</td>
-                      <td>{hop.asn || "—"}</td>
+                      <td>{hop.asn ? <div className="network-hop-asn">
+                        <span>{hop.asn}</span>
+                        {Object.hasOwn(hopNetworks, hop.asn) && <span className="network-hop-network" data-network={hopNetworks[hop.asn]}>{hopNetworks[hop.asn]}</span>}
+                      </div> : "—"}</td>
                       <td><span className="network-hop-owner">{hop.owner || (hop.location ? "" : "未知")}</span>{hop.location && <span className="network-hop-location">{hop.location}</span>}</td>
                     </tr>
                   )

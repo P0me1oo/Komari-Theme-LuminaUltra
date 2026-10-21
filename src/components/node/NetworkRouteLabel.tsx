@@ -3,6 +3,7 @@ import { useNetworkInfo } from "@/hooks/useNetworkInfo";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { routeLabel, routeName } from "@/services/networkInfo";
 import { invertHomepagePingTaskBindings } from "@/utils/pingTasks";
+import { NetworkRouteSegments } from "@/components/ui/NetworkRouteSegments";
 
 export function NetworkRouteLabel({ uuid, taskId, children = null }: { uuid: string; taskId: number | null; children?: ReactNode }) {
   const { node, settings } = useNetworkInfo(uuid);
@@ -11,7 +12,7 @@ export function NetworkRouteLabel({ uuid, taskId, children = null }: { uuid: str
   const label = routeLabel(route);
   const title = [routeName(route), route.address, label, route.running ? "正在更新" : "", route.error,
     route.checked_at ? new Date(route.checked_at).toLocaleString("zh-CN") : ""].filter(Boolean).join(" · ");
-  return <span className="network-loss-route" title={title} aria-label={`回程线路：${label}`}>{label}</span>;
+  return <span className="network-loss-route" title={title} aria-label={`回程线路：${label}`}><NetworkRouteSegments label={label} /></span>;
 }
 
 export function SingleNetworkRouteLabel({ uuid, children }: { uuid: string; children?: ReactNode }) {

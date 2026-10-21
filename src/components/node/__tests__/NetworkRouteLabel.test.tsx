@@ -20,7 +20,7 @@ const data: NetworkResults = { available: true, show_home: true, nodes: [
 ] };
 
 describe("丢包率条上方左侧的回程线路", () => {
-  it("按服务器和探测点对应结果，只输出标题文字", () => {
+  it("按服务器和探测点对应结果，替换原标签", () => {
     const html = renderToStaticMarkup(<NetworkInfoContext.Provider value={data}>
       <NetworkRouteLabel uuid="b" taskId={1}><span>丢包</span></NetworkRouteLabel>
     </NetworkInfoContext.Provider>);

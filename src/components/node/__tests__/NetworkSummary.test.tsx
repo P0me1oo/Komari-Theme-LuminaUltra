@@ -167,7 +167,7 @@ it("首页与详情均隐藏诊断信息，详情保留逐跳 AS 号", () => {
   expect(details).not.toContain("ASN 证据");
   expect(details).not.toContain("59.43.0.0/16");
   expect(details).not.toContain("2026.10.18.1");
-  expect(details).toContain("<td>AS4809</td>");
+  expect(details).toContain('class="network-hop-asn"><span>AS4809</span>');
 });
 
 it("双栈属性相同时共用标签，V4/V6 并排显示", () => {
@@ -211,7 +211,7 @@ it("路径详情显示每一跳的 AS 号并保留企业和地区，不受节点
   expect(html).toContain('class="network-hop-owner">测试骨干网</span>');
   expect(html).toContain('class="network-hop-location">广东</span>');
   expect(html).toContain("<th>AS 号</th>");
-  expect(html).toContain("<td>AS4809</td>");
+  expect(html).toContain('class="network-hop-asn"><span>AS4809</span>');
   expect(html).not.toContain("AS64500");
 });
 
@@ -264,6 +264,8 @@ it("转接线路和地理路径在预览中显示，逐跳表格默认折叠", (
   const summary = html.match(/<summary\b[^>]*>(.*?)<\/summary>/)?.[1];
   expect(summary).toContain("10099");
   expect(summary).toContain('aria-label="转接至"');
+  expect(summary).toContain('data-network="10099">10099</span>');
+  expect(summary).toContain('data-network="9929">9929</span>');
   expect(summary?.indexOf("10099")).toBeLessThan(summary!.indexOf("9929"));
   expect(summary).not.toContain("ASN 证据");
   expect(html).toMatch(/<details class="network-hop-details">/);

@@ -540,8 +540,11 @@ export function installDevMockApi() {
         nodes: nodes.filter((node) => adminMode || !node.hidden).map((node) => ({ uuid: node.uuid,
           ips: ipVisible ? [{ family: 4, asn: "AS64500", organization: "示例运营商", type: "机房", source: "IPinfo（演示数据）", checked_at: new Date().toISOString(), stale: false, error: null }] : [],
           routes: (routeVisible && (networkConfig.all_nodes || networkConfig.nodes.includes(node.uuid)) ? mockTargets(node.uuid) : []).map((target) => {
-            const network = target.carrier === "ct" ? { asn: "AS4809", name: "CN2" } : target.carrier === "cu" ? { asn: "AS9929", name: "联通9929" } : { asn: "AS58807", name: "CMIN2" };
-            const route_label = target.carrier === "ct" ? "CN2GIA" : target.carrier === "cu" ? "10099->9929" : target.carrier === "cm" ? "CMIN2" : null;
+            const regularRoute = node.uuid === "hong-kong-cache-01";
+            const network = target.carrier === "ct" ? { asn: "AS4809", name: "CN2" }
+              : target.carrier === "cu" ? regularRoute ? { asn: "AS4837", name: "4837" } : { asn: "AS9929", name: "9929" }
+                : regularRoute ? { asn: "AS58453", name: "CMI" } : { asn: "AS58807", name: "CMIN2" };
+            const route_label = target.carrier === "ct" ? "CN2GIA" : target.carrier === "cu" ? `10099->${network.name}` : target.carrier === "cm" ? network.name : null;
             return { ...target, status: target.error ? "error" : "ok", checked_at: new Date().toISOString(), route_label, networks: [network], asns: ["AS64500", network.asn], reached: !target.error, running: false, stale: false,
               ...(adminMode && !target.error ? {
                 hops: [
@@ -549,9 +552,9 @@ export function installDevMockApi() {
                   { ttl: 2, ip: "192.0.2.2", asn: "AS64500", owner: "示例国际出口", location: "日本 · 东京", rtt_ms: 1.8 },
                   { ttl: 3, ip: null, asn: null, owner: "", location: "", rtt_ms: null },
                   { ttl: 4, ip: null, asn: null, owner: "", location: "", rtt_ms: null },
-                  { ttl: 5, ip: "198.51.100.5", asn: target.carrier === "cu" ? "AS10099" : network.asn, owner: "示例国际骨干网", location: "中国 · 香港", rtt_ms: 42.3 },
+                  { ttl: 5, ip: "198.51.100.5", asn: target.carrier === "cu" ? "AS10099" : target.carrier === "cm" ? "AS58453" : network.asn, owner: "示例国际骨干网", location: "中国 · 香港", rtt_ms: 42.3 },
                   { ttl: 6, ip: "198.51.100.6", asn: network.asn, owner: network.name, location: "中国 · 广东 · 广州", rtt_ms: 48.7 },
-                  { ttl: 7, ip: "203.0.113.7", asn: network.asn, owner: "示例接入网络", location: "中国 · 广东 · 广州", rtt_ms: 49.2 },
+                  { ttl: 7, ip: "203.0.113.7", asn: target.carrier === "cm" ? "AS9808" : network.asn, owner: "示例接入网络", location: "中国 · 广东 · 广州", rtt_ms: 49.2 },
                 ],
                 matched_asns: target.carrier === "cu" ? ["AS10099", network.asn] : [network.asn],
                 matched_prefixes: [], rule_version: "2026.10.18.1",

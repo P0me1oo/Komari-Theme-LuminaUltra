@@ -42,6 +42,9 @@
 .node-list-node-text > .node-ip-badges { margin-top: 6px; }
 
 .network-loss-route {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   flex: 0 1 auto;
   min-width: 0;
   color: var(--text-secondary);
@@ -62,7 +65,7 @@
 }
 .network-summary-line { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .network-summary-key { flex-shrink: 0; color: var(--text-secondary); }
-.network-summary-value { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.network-summary-value { display: inline-flex; align-items: center; gap: 4px; min-width: 0; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .network-ip-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
 .network-ip-item { display: grid; gap: 6px; padding: 14px; border-radius: 12px; background: var(--surface-elev-a); overflow-wrap: anywhere; font-size: 13px; }
 .network-ip-meta { color: var(--text-secondary); }
@@ -98,12 +101,13 @@
 .network-route-address > span:last-child { min-width: 0; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 11px; }
 .network-route-family { flex-shrink: 0; font-size: 10px; font-weight: 600; }
 .network-route-result { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 10px; min-width: 0; }
-.network-route-label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; max-width: 100%; padding: 3px 8px; border: 1px solid var(--hairline); border-radius: 6px; background: var(--fill-tertiary); color: var(--text-primary); line-height: 1.4; }
-.network-route-segment { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
+.network-route-label { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; min-width: 0; max-width: 100%; color: var(--text-primary); line-height: 1.4; }
+.network-route-segment { display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; }
 .network-route-segment svg { flex-shrink: 0; color: var(--text-tertiary); }
-.network-route-segment strong { font-size: 14px; font-weight: 650; min-width: 0; }
-.network-route-label[data-state="error"] { color: var(--status-error); background: color-mix(in srgb, var(--status-error) 8%, transparent); }
-.network-route-label[data-state="pending"] { color: var(--text-secondary); background: var(--fill-tertiary); }
+.network-route-badge { min-width: 0; padding: 1px 5px; border: 1px solid var(--hairline); border-radius: 5px; background: var(--fill-tertiary); color: var(--text-secondary); font-size: inherit; font-weight: inherit; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.network-route-label .network-route-badge { padding: 3px 8px; border-radius: 6px; font-size: 14px; font-weight: 650; }
+.network-route-label[data-state="error"] .network-route-badge { border-color: color-mix(in srgb, var(--status-error) 26%, transparent); color: var(--status-error); background: color-mix(in srgb, var(--status-error) 8%, transparent); }
+.network-route-label[data-state="pending"] .network-route-badge { color: var(--text-secondary); background: var(--fill-tertiary); }
 .network-route-warning { color: var(--text-secondary); font-size: 11px; }
 .network-route-updated { display: grid; gap: 3px; color: var(--text-secondary); font-size: 11px; font-variant-numeric: tabular-nums; text-align: center; }
 .network-route-updating { color: var(--accent-500); }
@@ -121,9 +125,9 @@
 .network-route-geography li { display: inline-flex; align-items: center; gap: 8px; min-width: 0; color: var(--text-secondary); overflow-wrap: anywhere; }
 .network-route-geography svg { flex-shrink: 0; color: var(--text-tertiary); }
 .network-table-scroll { overflow: auto; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface-a); }
-.network-table-scroll table { width: 100%; min-width: 680px; border-collapse: collapse; text-align: left; font-size: 12px; }
+.network-table-scroll table { width: 100%; min-width: 680px; border-collapse: collapse; text-align: center; font-size: 12px; }
 .network-table-scroll th,
-.network-table-scroll td { padding: 10px 12px; border-bottom: 1px solid var(--hairline); }
+.network-table-scroll td { padding: 10px 12px; border-bottom: 1px solid var(--hairline); text-align: center; vertical-align: middle; }
 .network-table-scroll th { background: var(--fill-tertiary); color: var(--text-secondary); font-size: 11px; font-weight: 500; white-space: nowrap; }
 .network-table-scroll tbody tr:last-child td { border-bottom: 0; }
 .network-table-scroll tbody tr:hover { background: var(--fill-tertiary); }
@@ -135,6 +139,20 @@
 .network-table-scroll td:last-child:not([colspan]) { min-width: 170px; overflow-wrap: anywhere; }
 .network-table-scroll td[colspan] { color: var(--text-tertiary); font-size: 11px; background: var(--fill-tertiary); }
 .network-hop-unit { color: var(--text-tertiary); font-size: 10px; font-weight: 400; }
+.network-hop-asn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+.network-hop-network { display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; border: 1px solid var(--hairline); border-radius: 5px; background: var(--fill-tertiary); color: var(--text-secondary); font-family: var(--font-sans); font-size: 10px; font-weight: 500; line-height: 1.4; }
+:is(.network-hop-network, .network-route-badge)[data-network="CMI"] { --network-color: #1d4ed8; --network-color-dark: #93c5fd; }
+:is(.network-hop-network, .network-route-badge)[data-network="CMIN2"] { --network-color: #6d28d9; --network-color-dark: #c4b5fd; }
+:is(.network-hop-network, .network-route-badge)[data-network="CN2"],
+:is(.network-hop-network, .network-route-badge)[data-network="电信国际"] { --network-color: #92400e; --network-color-dark: #fcd34d; }
+:is(.network-hop-network, .network-route-badge)[data-network="9929"],
+:is(.network-hop-network, .network-route-badge)[data-network="10099"] { --network-color: #0f766e; --network-color-dark: #5eead4; }
+:is(.network-hop-network, .network-route-badge):is([data-network="CMI"], [data-network="CMIN2"], [data-network="CN2"], [data-network="电信国际"], [data-network="9929"], [data-network="10099"]) {
+  border-color: color-mix(in srgb, var(--network-color) 26%, transparent);
+  background: color-mix(in srgb, var(--network-color) 9%, var(--surface));
+  color: var(--network-color);
+}
+:root[data-appearance="dark"] :is(.network-hop-network, .network-route-badge) { --network-color: var(--network-color-dark); }
 .network-hop-owner { display: block; color: var(--text-primary); }
 .network-hop-location { display: block; margin-top: 3px; color: var(--text-secondary); font-size: 11px; }
 .network-route-error { margin: 0; padding: 0 16px 14px; color: var(--status-error); font-size: 12px; overflow-wrap: anywhere; }

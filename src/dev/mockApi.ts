@@ -541,10 +541,10 @@ export function installDevMockApi() {
           ips: ipVisible ? [{ family: 4, asn: "AS64500", organization: "示例运营商", type: "机房", source: "IPinfo（演示数据）", checked_at: new Date().toISOString(), stale: false, error: null }] : [],
           routes: (routeVisible && (networkConfig.all_nodes || networkConfig.nodes.includes(node.uuid)) ? mockTargets(node.uuid) : []).map((target) => {
             const regularRoute = node.uuid === "hong-kong-cache-01";
-            const network = target.carrier === "ct" ? { asn: "AS4809", name: "CN2" }
+            const network = target.carrier === "ct" ? regularRoute ? { asn: "AS4134", name: "163" } : { asn: "AS4809", name: "CN2" }
               : target.carrier === "cu" ? regularRoute ? { asn: "AS4837", name: "4837" } : { asn: "AS9929", name: "9929" }
                 : regularRoute ? { asn: "AS58453", name: "CMI" } : { asn: "AS58807", name: "CMIN2" };
-            const route_label = target.carrier === "ct" ? "CN2GIA" : target.carrier === "cu" ? `10099->${network.name}` : target.carrier === "cm" ? network.name : null;
+            const route_label = target.carrier === "ct" ? regularRoute ? "163" : "CN2GIA" : target.carrier === "cu" ? `10099->${network.name}` : target.carrier === "cm" ? network.name : null;
             return { ...target, status: target.error ? "error" : "ok", checked_at: new Date().toISOString(), route_label, networks: [network], asns: ["AS64500", network.asn], reached: !target.error, running: false, stale: false,
               ...(adminMode && !target.error ? {
                 hops: [

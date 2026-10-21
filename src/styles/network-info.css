@@ -141,13 +141,12 @@
 .network-hop-unit { color: var(--text-tertiary); font-size: 10px; font-weight: 400; }
 .network-hop-asn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
 .network-hop-network { display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; border: 1px solid var(--hairline); border-radius: 5px; background: var(--fill-tertiary); color: var(--text-secondary); font-family: var(--font-sans); font-size: 10px; font-weight: 500; line-height: 1.4; }
-:is(.network-hop-network, .network-route-badge)[data-network="CMI"] { --network-color: #1d4ed8; --network-color-dark: #93c5fd; }
 :is(.network-hop-network, .network-route-badge)[data-network="CMIN2"] { --network-color: #6d28d9; --network-color-dark: #c4b5fd; }
 :is(.network-hop-network, .network-route-badge)[data-network="CN2"],
 :is(.network-hop-network, .network-route-badge)[data-network="电信国际"] { --network-color: #92400e; --network-color-dark: #fcd34d; }
 :is(.network-hop-network, .network-route-badge)[data-network="9929"],
 :is(.network-hop-network, .network-route-badge)[data-network="10099"] { --network-color: #0f766e; --network-color-dark: #5eead4; }
-:is(.network-hop-network, .network-route-badge):is([data-network="CMI"], [data-network="CMIN2"], [data-network="CN2"], [data-network="电信国际"], [data-network="9929"], [data-network="10099"]) {
+:is(.network-hop-network, .network-route-badge):is([data-network="CMIN2"], [data-network="CN2"], [data-network="电信国际"], [data-network="9929"], [data-network="10099"]) {
   border-color: color-mix(in srgb, var(--network-color) 26%, transparent);
   background: color-mix(in srgb, var(--network-color) 9%, var(--surface));
   color: var(--network-color);

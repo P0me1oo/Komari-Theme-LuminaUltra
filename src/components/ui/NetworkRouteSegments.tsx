@@ -9,8 +9,6 @@ function segmentNetwork(label: string) {
     case "CTGGIA":
     case "电信国际":
       return "电信国际";
-    case "CMI":
-      return "CMI";
     case "CMIN2":
       return "CMIN2";
     case "9929":

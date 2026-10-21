@@ -543,7 +543,19 @@ export function installDevMockApi() {
             const network = target.carrier === "ct" ? { asn: "AS4809", name: "CN2" } : target.carrier === "cu" ? { asn: "AS9929", name: "联通9929" } : { asn: "AS58807", name: "CMIN2" };
             const route_label = target.carrier === "ct" ? "CN2GIA" : target.carrier === "cu" ? "10099->9929" : target.carrier === "cm" ? "CMIN2" : null;
             return { ...target, status: target.error ? "error" : "ok", checked_at: new Date().toISOString(), route_label, networks: [network], asns: ["AS64500", network.asn], reached: !target.error, running: false, stale: false,
-              ...(adminMode ? { hops: [{ ttl: 1, ip: "203.0.113.1", asn: network.asn, owner: "演示网络", location: "示例地区", rtt_ms: 12.5 }] } : {}) };
+              ...(adminMode && !target.error ? {
+                hops: [
+                  { ttl: 1, ip: "192.0.2.1", asn: "AS64500", owner: "示例机房网络", location: "日本 · 东京", rtt_ms: 0.6 },
+                  { ttl: 2, ip: "192.0.2.2", asn: "AS64500", owner: "示例国际出口", location: "日本 · 东京", rtt_ms: 1.8 },
+                  { ttl: 3, ip: null, asn: null, owner: "", location: "", rtt_ms: null },
+                  { ttl: 4, ip: null, asn: null, owner: "", location: "", rtt_ms: null },
+                  { ttl: 5, ip: "198.51.100.5", asn: target.carrier === "cu" ? "AS10099" : network.asn, owner: "示例国际骨干网", location: "中国 · 香港", rtt_ms: 42.3 },
+                  { ttl: 6, ip: "198.51.100.6", asn: network.asn, owner: network.name, location: "中国 · 广东 · 广州", rtt_ms: 48.7 },
+                  { ttl: 7, ip: "203.0.113.7", asn: network.asn, owner: "示例接入网络", location: "中国 · 广东 · 广州", rtt_ms: 49.2 },
+                ],
+                matched_asns: target.carrier === "cu" ? ["AS10099", network.asn] : [network.asn],
+                matched_prefixes: [], rule_version: "2026.10.18.1",
+              } : {}) };
           }),
         })),
       });

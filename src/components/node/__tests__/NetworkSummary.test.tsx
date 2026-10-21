@@ -151,7 +151,7 @@ it("首页回程区域只显示线路，IP 标签显示在 V4 后面", () => {
   expect(html.indexOf('data-ip-label="type"')).toBeLessThan(html.indexOf('aria-label="三网回程"'));
 });
 
-it("首页与详情均不显示旧插件的置信度，详情继续显示路径证据", () => {
+it("首页与详情均隐藏诊断信息，详情保留逐跳 AS 号", () => {
   const route = {
     confidence: 0.96,
     matched_asns: ["AS4809"],
@@ -164,8 +164,10 @@ it("首页与详情均不显示旧插件的置信度，详情继续显示路径�
   expect(home).not.toContain("59.43.0.0/16");
   expect(details).not.toContain("识别置信度");
   expect(details).not.toContain("96%");
-  expect(details).toContain("ASN 证据 AS4809");
-  expect(details).toContain("规则 2026.10.18.1");
+  expect(details).not.toContain("ASN 证据");
+  expect(details).not.toContain("59.43.0.0/16");
+  expect(details).not.toContain("2026.10.18.1");
+  expect(details).toContain("<td>AS4809</td>");
 });
 
 it("双栈属性相同时共用标签，V4/V6 并排显示", () => {
@@ -206,7 +208,8 @@ it("详情的 IP 信息与回程是两个区域，错误分别显示", () => {
 it("路径详情显示每一跳的 AS 号并保留企业和地区，不受节点 ASN 标签开关影响", () => {
   const html = render(NetworkPanel, {}, {}, { show_asn: false });
   expect(html).toContain("企业 / 地区");
-  expect(html).toContain("测试骨干网 · 广东");
+  expect(html).toContain('class="network-hop-owner">测试骨干网</span>');
+  expect(html).toContain('class="network-hop-location">广东</span>');
   expect(html).toContain("<th>AS 号</th>");
   expect(html).toContain("<td>AS4809</td>");
   expect(html).not.toContain("AS64500");
@@ -227,7 +230,7 @@ it("路径表格合并首尾连续未响应跳点，保留中间有响应但缺�
   const rows = html.match(/<tbody>(.*?)<\/tbody>/)?.[1];
   expect(rows).toBe(
     '<tr><td>1–2</td><td colSpan="4">连续 2 跳未响应</td></tr>' +
-    '<tr><td>3</td><td>203.0.113.3</td><td>—</td><td>测试网络</td><td>0.0 ms</td></tr>' +
+    '<tr><td>3</td><td>0.0 <span class="network-hop-unit">ms</span></td><td>203.0.113.3</td><td>—</td><td><span class="network-hop-owner">测试网络</span></td></tr>' +
     '<tr><td>4–6</td><td colSpan="4">连续 3 跳未响应</td></tr>',
   );
   expect(hops).toEqual(original);
@@ -252,4 +255,60 @@ it.each([undefined, []])("没有跳点数据时不显示路径表格：%s", (hop
   const html = render(NetworkPanel, {}, { hops });
   expect(html).not.toContain("查看具体路径");
   expect(html).not.toContain("<table>");
+});
+
+it("转接线路和地理路径在预览中显示，逐跳表格默认折叠", () => {
+  const html = render(NetworkPanel, {}, {
+    route_label: "10099->9929", matched_asns: ["AS10099", "AS9929"], rule_version: "2026.10.18.1",
+  });
+  const summary = html.match(/<summary\b[^>]*>(.*?)<\/summary>/)?.[1];
+  expect(summary).toContain("10099");
+  expect(summary).toContain('aria-label="转接至"');
+  expect(summary?.indexOf("10099")).toBeLessThan(summary!.indexOf("9929"));
+  expect(summary).not.toContain("ASN 证据");
+  expect(html).toMatch(/<details class="network-hop-details">/);
+  expect(html).not.toContain("ASN 证据");
+  expect(html.indexOf("逐跳明细")).toBeGreaterThan(html.indexOf("</summary>"));
+});
+
+it("游客没有逐跳数据和识别依据时不显示无效展开入口", () => {
+  const html = render(NetworkPanel, {}, { hops: undefined });
+  expect(html).toContain("CN2GIA");
+  expect(html).not.toContain("<details");
+  expect(html).not.toContain("network-route-toggle");
+});
+
+it("仅有诊断信息而没有跳点时不留下空的展开区", () => {
+  const html = render(NetworkPanel, {}, { hops: [], matched_asns: ["AS4809"], matched_prefixes: ["59.43.0.0/16"], rule_version: "2026.10.18.1" });
+  expect(html).not.toContain("<details");
+  expect(html).not.toContain("查看识别依据");
+  expect(html).not.toContain("2026.10.18.1");
+  expect(html).not.toContain("59.43.0.0/16");
+  expect(html).not.toContain("<table>");
+});
+
+it("未完成检测与路径不完整分别提示，等待检测时不误报未到达", () => {
+  const pending = render(NetworkPanel, {}, { status: "pending", checked_at: null, reached: false, running: true });
+  expect(pending).toContain("检测中");
+  expect(pending).toContain("尚未检测");
+  expect(pending).not.toContain("未到达目标");
+  const partial = render(NetworkPanel, {}, { status: "partial", reached: false });
+  expect(partial).toContain("CN2GIA");
+  expect(partial).toContain("未到达目标");
+});
+
+it("地理路径按实际跳点排序，仅合并相邻重复地区，缺失时不推测", () => {
+  const hops: NonNullable<NetworkRoute["hops"]> = ["日本 东京", "日本 东京", "", "中国 香港", "中国 广东 广州", "日本 东京"]
+    .map((location, index) => ({ ...unansweredHop(index + 1), ip: `192.0.2.${index + 1}`, location }));
+  hops.push({ ...unansweredHop(7), location: "未响应地区" });
+  const original = structuredClone(hops);
+  const html = render(NetworkPanel, {}, { hops });
+  const path = html.match(/<ol aria-label="[^"]*地理路径">(.*?)<\/ol>/)?.[1];
+  expect(html.indexOf("地理路径")).toBeLessThan(html.indexOf("</summary>"));
+  expect(path?.match(/日本 东京/g)).toHaveLength(2);
+  expect(path?.indexOf("日本 东京")).toBeLessThan(path!.indexOf("中国 香港"));
+  expect(path?.indexOf("中国 香港")).toBeLessThan(path!.indexOf("中国 广东 广州"));
+  expect(path).not.toContain("未响应地区");
+  expect(hops).toEqual(original);
+  expect(render(NetworkPanel, {}, { hops: [unansweredHop(1)] })).not.toContain("network-route-geography");
 });
